@@ -113,6 +113,16 @@ RUN ln -s /usr/include/eigen3/Eigen /usr/include/Eigen
 
 ## Install spdlog
 
+## Configure system-wide git user 
+ARG GIT_LOGIN_EMAIL
+RUN git config --system user.email "$GIT_LOGIN_EMAIL"
+# RUN echo "git login email set to: $GIT_LOGIN_EMAIL"
+
+## Configure default file creation permissions 
+#  (RUN umask in dockerfile doesn't work)
+# RUN umask u=rwx,g=rwx,o=rwx
+RUN echo "umask u=rwx,g=rwx,o=rwx" >> /root/.profile
+
 ## Bring up bash 
 CMD ["bash"]
 
@@ -541,15 +551,6 @@ RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /etc/environment
 RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
 RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
 
-## Configure system-wide git user 
-ARG GIT_LOGIN_EMAIL
-RUN git config --system user.email "$GIT_LOGIN_EMAIL"
-# RUN echo "git login email set to: $GIT_LOGIN_EMAIL"
-
-## Configure default file creation permissions 
-#  (RUN umask in dockerfile doesn't work)
-# RUN umask u=rwx,g=rwx,o=rwx
-RUN echo "umask u=rwx,g=rwx,o=rwx" >> /root/.profile
 
 
 ## Create an entry point script for this

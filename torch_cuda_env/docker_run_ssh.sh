@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Specify name of container image
-CONTAINER_NAME=ocs2-container
+CONTAINER_NAME=torch-cuda-container
 # Change this variable to the name of local user on host machine
 LOCAL_USR=bruce
 # Specify docker workspace folder name to be mounted 
