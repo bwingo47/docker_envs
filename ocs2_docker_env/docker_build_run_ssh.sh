@@ -4,8 +4,8 @@
 CONTAINER_NAME=ocs2-container
 # Specify name of docker file to build and run
 DOCKERFILE_NAME=ocs2.dockerfile
-# Change this variable to the name of local user on host machine
-LOCAL_USR=bruce
+# Specify build stage name for multi-target dockerfile
+DOCKERFILE_BUILD_STAGE=REMOTE_ROS_OCS2
 # Specify docker workspace folder name to be mounted 
 DOCKER_WS=docker_ws
 # Specify github login name
@@ -66,7 +66,7 @@ docker build -f $DOCKERFILE_NAME \
   --build-arg CUSTOM_USER=$CUSTOM_USER \
   --build-arg GIT_LOGIN_EMAIL=$GIT_LOGIN_EMAIL \
   --build-arg DOCKER_WS=$DOCKER_WS \
-  --target REMOTE_ROS_OCS2 \
+  --target $DOCKERFILE_BUILD_STAGE \
   -t $CONTAINER_NAME . || { echo "Build docker failed"; exit 1; }
 
 echo "XSOCK: " $XSOCK
@@ -177,7 +177,7 @@ else
         $CONTAINER_NAME
 fi
 
-ssh-keygen -f "/home/$LOCAL_USR/.ssh/known_hosts" -R "[localhost]:7777"
+ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:7777"
 
 ssh root@localhost -X -p 7777
 

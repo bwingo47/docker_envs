@@ -2,12 +2,9 @@
 
 # Specify name of container image
 CONTAINER_NAME=ocs2-container
-# Change this variable to the name of local user on host machine
-LOCAL_USR=bruce
 # Specify docker workspace folder name to be mounted 
 DOCKER_WS=docker_ws
-# Specify github login name
-GIT_LOGIN_NAME=bwingo47
+
 
 # If the container is running stop it
 if [ "$( docker container inspect -f '{{.State.Running}}' $CONTAINER_NAME )" == "true" ]; then
@@ -103,6 +100,6 @@ else
         $CONTAINER_NAME
 fi
 
-ssh-keygen -f "/home/$LOCAL_USR/.ssh/known_hosts" -R "[localhost]:7777"
+ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:7777"
 
 ssh root@localhost -X -p 7777
