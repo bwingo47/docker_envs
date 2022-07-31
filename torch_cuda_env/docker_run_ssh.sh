@@ -3,7 +3,7 @@
 # Specify name of container image
 CONTAINER_NAME=torch-cuda-container
 # Specify docker workspace folder name to be mounted 
-DOCKER_WS=docker_ws
+DOCKER_WS=dl_ws
 
 
 # If the container is running stop it

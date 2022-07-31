@@ -94,6 +94,56 @@ RUN pip3 install \
     torchvision
 # Install what you want (remember the ' \')
 
+## Install pip packages for dl env 
+RUN pip3 install \
+    Cython \
+    Jinja2 \
+    MarkupSafe \
+    Pillow \
+    Pygments \
+    appnope \
+    argparse \
+    backports-abc \
+    backports.ssl-match-hostname \
+    certifi \
+    cycler \
+    decorator \
+    future \
+    gnureadline \
+    h5py \
+    ipykernel \
+    ipython \
+    ipython-genutils \
+    ipywidgets \
+    jsonschema \
+    jupyter \
+    jupyter-client \
+    jupyter-console \
+    jupyter-core \
+    matplotlib \
+    mistune \
+    nbconvert \
+    nbformat \
+    nltk \
+    notebook \
+    numpy \
+    path.py \
+    pexpect \
+    pickleshare \
+    ptyprocess \
+    pyparsing \
+    python-dateutil \
+    pytz \
+    pyzmq \
+    qtconsole \
+    scipy \
+    simplegeneric \
+    singledispatch \
+    six \
+    terminado \
+    tornado \
+    traitlets
+
 ## Clean up
 RUN apt autoclean
 RUN apt autoremove

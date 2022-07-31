@@ -7,7 +7,7 @@ DOCKERFILE_NAME=torch_cuda.dockerfile
 # Specify build stage name for multi-target dockerfile
 DOCKERFILE_BUILD_STAGE=REMOTE_NVIDIA
 # Specify docker workspace folder name to be mounted 
-DOCKER_WS=docker_ws
+DOCKER_WS=dl_ws
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
 
