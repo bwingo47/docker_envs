@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
+# Specify docke user name
+DOCKER_USR=bwingo47
 # Specify name of container
 CONTAINER_NAME=ocs2-container
+# Specify name of image (repository)
+IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
 DOCKERFILE_NAME=ocs2.dockerfile
 # Specify build stage name for multi-target dockerfile
@@ -67,7 +71,7 @@ docker build -f $DOCKERFILE_NAME \
   --build-arg GIT_LOGIN_EMAIL=$GIT_LOGIN_EMAIL \
   --build-arg DOCKER_WS=$DOCKER_WS \
   --target $DOCKERFILE_BUILD_STAGE \
-  -t $CONTAINER_NAME . || { echo "Build docker failed"; exit 1; }
+  -t $IMAGE_NAME . || { echo "Build docker failed"; exit 1; }
 
 echo "XSOCK: " $XSOCK
 echo "XAUTH: " $XAUTH
@@ -153,7 +157,7 @@ then
         --privileged \
         --runtime=nvidia \
         --security-opt seccomp=unconfined \
-        $CONTAINER_NAME
+        $IMAGE_NAME
 else 
   echo "nvidia runtime not available"
 
@@ -174,7 +178,7 @@ else
         -v $HOME/.ssh:/root/.ssh \
         --privileged \
         --security-opt seccomp=unconfined \
-        $CONTAINER_NAME
+        $IMAGE_NAME
 fi
 
 ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:7777"

@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
-# Specify name of container image
+# Specify docke user name
+DOCKER_USR=bwingo47
+# Specify name of container
 CONTAINER_NAME=ocs2-container
+# Specify name of image (repository)
+IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify docker workspace folder name to be mounted 
 DOCKER_WS=docker_ws
 
@@ -76,7 +80,7 @@ then
         --privileged \
         --runtime=nvidia \
         --security-opt seccomp=unconfined \
-        $CONTAINER_NAME
+        $IMAGE_NAME
 else 
   echo "nvidia runtime not available"
 
@@ -97,7 +101,7 @@ else
         -v $HOME/.ssh:/root/.ssh \
         --privileged \
         --security-opt seccomp=unconfined \
-        $CONTAINER_NAME
+        $IMAGE_NAME
 fi
 
 ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:7777"
