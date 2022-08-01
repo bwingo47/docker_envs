@@ -309,87 +309,21 @@ RUN apt update --fix-missing \
 
 ## Install robotpkg binaries 
 # install binaries from robotpkg
-RUN sh -c "echo 'deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub \
- $(lsb_release -cs) robotpkg' >> /etc/apt/sources.list.d/robotpkg.list"
-RUN curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | apt-key add -
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-     robotpkg-py38-eigenpy
-    #  robotpkg-hpp-fcl
+# RUN sh -c "echo 'deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub \
+#  $(lsb_release -cs) robotpkg' >> /etc/apt/sources.list.d/robotpkg.list"
+# RUN curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | apt-key add -
+# RUN apt-get update \
+#   && apt-get install -y --no-install-recommends \
+#      robotpkg-py38-eigenpy
+#     #  robotpkg-hpp-fcl
 
-# export binary install path to .bashrc 
-# .bashrc will only be reloaded when running the container, as bash needs to run in interactive mode
-# to force reload .bashrc during docker build see above (not recommanded!!)
-# USER $REMOTE_USR
-
-# update path for $REMOTE_USR
-RUN echo "export PATH=/opt/openrobots/bin:$PATH" >> ~/.bashrc
-RUN echo "export PKG_CONFIG_PATH=/opt/openrobots/lib/pkgconfig:$PKG_CONFIG_PATH" >> ~/.bashrc
-RUN echo "export LD_LIBRARY_PATH=/opt/openrobots/lib:$LD_LIBRARY_PATH" >> ~/.bashrc
-RUN echo "export PYTHONPATH=/opt/openrobots/lib/python3.8/site-packages:$PYTHONPATH" >> ~/.bashrc
-RUN echo "export CMAKE_PREFIX_PATH=/opt/openrobots:$CMAKE_PREFIX_PATH" >> ~/.bashrc
-# RUN cat ~/.bashrc
-
-# update path for root
-RUN echo "export PATH=/opt/openrobots/bin:$PATH" >> /root/.bashrc
-RUN echo "export PKG_CONFIG_PATH=/opt/openrobots/lib/pkgconfig:$PKG_CONFIG_PATH" >> /root/.bashrc
-RUN echo "export LD_LIBRARY_PATH=/opt/openrobots/lib:$LD_LIBRARY_PATH" >> /root/.bashrc
-RUN echo "export PYTHONPATH=/opt/openrobots/lib/python3.8/site-packages:$PYTHONPATH" >> /root/.bashrc
-RUN echo "export CMAKE_PREFIX_PATH=/opt/openrobots:$CMAKE_PREFIX_PATH" >> /root/.bashrc
-
-
-# force reload bashrc
-# !!!!! docker RUN command runs /bin/bash in non-interactive mode, therefore in this mode
-#       source .bashrc does nothing (check .bashrc content for this check).
-#       therefore to source .bashrc properly, either force set shell to interactive mode, 
-#       which is not recommended, but will work. Or just define docker ARGs for these path variables
-
-# force set bash shell to be interactive, may cause problems, and don't forget to set the shell back
-# SHELL ["/bin/bash", "-ic"]
-# RUN source ~/.bashrc && echo "PATH: $PATH"
-# RUN echo "CMAKE_PREFIX_PATH: $CMAKE_PREFIX_PATH"
-# SHELL ["/bin/bash", "-c"]
-
-# define binary install path for subsequent install, 
-# these ARGs will only be available during docker build, not during docker run 
-
-# update path variables 
-ARG path=/opt/openrobots/bin:$PATH
-ARG pkg_config_path=/opt/openrobots/lib/pkgconfig:$PKG_CONFIG_PATH
-ARG ld_library_path=/opt/openrobots/lib:$LD_LIBRARY_PATH
-ARG pythonpath=/opt/openrobots/lib/python3.8/site-packages:$PYTHONPATH
-ARG cmake_prefix_path=/opt/openrobots:$CMAKE_PREFIX_PATH
-
-ENV PATH=$path
-ENV PKG_CONFIG_PATH=$pkg_config_path
-ENV LD_LIBRARY_PATH=$ld_library_path
-ENV PYTHONPATH=$pythonpath
-ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
-
-
-# RUN touch ~/reload_bashrc.sh
-# RUN echo "#!/usr/bin/env bash" >> ~/reload_bashrc.sh &&\
-#     # echo "source ~/.bashrc" >> ~/reload_bashrc.sh &&\
-#     echo "export PATH=/opt/openrobots/bin:$PATH" >> ~/reload_bashrc.sh &&\
-#     echo "export PKG_CONFIG_PATH=/opt/openrobots/lib/pkgconfig:$PKG_CONFIG_PATH" >> ~/reload_bashrc.sh &&\
-#     echo "export LD_LIBRARY_PATH=/opt/openrobots/lib:$LD_LIBRARY_PATH" >> ~/reload_bashrc.sh &&\
-#     echo "export PYTHONPATH=/opt/openrobots/lib/python3.8/site-packages:$PYTHONPATH" >> ~/reload_bashrc.sh &&\
-#     echo "export CMAKE_PREFIX_PATH=/opt/openrobots:$CMAKE_PREFIX_PATH" >> ~/reload_bashrc.sh
-
-# RUN chmod +x ~/reload_bashrc.sh
-# RUN ~/reload_bashrc.sh && echo "cmake path is: $CMAKE_PREFIX_PATH"
-
-# RUN echo $PATH
-# RUN echo $PKG_CONFIG_PATH
-# RUN echo $LD_LIBRARY_PATH
-# RUN echo $PYTHONPATH
-# RUN echo $CMAKE_PREFIX_PATH
-
-## Install hpp-fcl from source
+## Install eigenpy from source 
 RUN cd /root &&\
-    git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git 
+    git clone --recursive https://github.com/bwingo47/eigenpy.git
+    # git clone --recursive https://github.com/stack-of-tasks/eigenpy.git
 
-RUN cd /root/hpp-fcl &&\
+RUN cd /root/eigenpy &&\
+    # git checkout f53d37e0f732361f338769b730a129e2da9b6a46 &&\
     git checkout master &&\
     mkdir build &&\
     cd build &&\
@@ -397,22 +331,6 @@ RUN cd /root/hpp-fcl &&\
     make -j12 &&\
     make install
 
-
-# export source install path to $REMOTE_USR .bashrc
-RUN echo "export PATH=/usr/local/bin:$PATH" >> ~/.bashrc
-RUN echo "export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> ~/.bashrc
-RUN echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> ~/.bashrc
-RUN echo "export PYTHONPATH=/usr/local/lib/python3.8/dist-packages:$PYTHONPATH" >> ~/.bashrc
-RUN echo "export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH" >> ~/.bashrc
-
-# export source install path to root .bashrc
-RUN echo "export PATH=/usr/local/bin:$PATH" >> /root/.bashrc
-RUN echo "export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> /root/.bashrc
-RUN echo "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> /root/.bashrc
-RUN echo "export PYTHONPATH=/usr/local/lib/python3.8/dist-packages:$PYTHONPATH" >> /root/.bashrc
-RUN echo "export CMAKE_PREFIX_PATH=/usr/local:$CMAKE_PREFIX_PATH" >> /root/.bashrc
-
-# update path variables 
 ARG path=/usr/local/bin:$PATH
 ARG pkg_config_path=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
 ARG ld_library_path=/usr/local/lib:$LD_LIBRARY_PATH
@@ -425,13 +343,30 @@ ENV LD_LIBRARY_PATH=$ld_library_path
 ENV PYTHONPATH=$pythonpath
 ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
+## Install hpp-fcl from source
+RUN cd /root &&\
+    git clone --recursive https://github.com/bwingo47/hpp-fcl.git
+    # git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git 
+
+RUN cd /root/hpp-fcl &&\
+    # git checkout c8373f933ec0fe9fbded6f8d1235f6fc08845ada &&\
+    git checkout devel &&\
+    mkdir build &&\
+    cd build &&\
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
+    make -j12 &&\
+    make install
+
+
 ## Install pinocchio from source
 RUN cd /root &&\ 
-    git clone --recursive https://github.com/stack-of-tasks/pinocchio
+    git clone --recursive https://github.com/bwingo47/pinocchio.git
+    # git clone --recursive https://github.com/stack-of-tasks/pinocchio
 
 # must using turn on BUILD_WITH_COLLISION_SUPPORT option during cmake .. 
 # otherwise ocs2_pinocchio (specifically ocs2_self_collision) won't build
 RUN cd /root/pinocchio &&\
+    # git checkout 5c93f4e043886ec43659a10a79701263a1e8fa18 &&\
     git checkout master &&\
     mkdir build &&\
     cd build &&\
@@ -440,13 +375,6 @@ RUN cd /root/pinocchio &&\
     make install
 
 
-
-
-# RUN echo $PATH
-# RUN echo $PKG_CONFIG_PATH
-# RUN echo $LD_LIBRARY_PATH
-# RUN echo $PYTHONPATH
-# RUN echo $CMAKE_PREFIX_PATH
 
 
 USER root
@@ -506,8 +434,8 @@ ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
 ## Install OCS2
 # RUN cd /root/catkin_ws/src &&\
-#     git clone https://github.com/leggedrobotics/ocs2.git &&\
-#     git clone https://github.com/leggedrobotics/ocs2_robotic_assets.git &&\
+#     git clone https://github.com/bwingo47/ocs2.git &&\
+#     git clone https://github.com/bwingo47/ocs2_robotic_assets.git &&\
 #     cd .. &&\
 #     catkin build ocs2_robotic_assets &&\
 #     catkin build ocs2_legged_robot_ros
