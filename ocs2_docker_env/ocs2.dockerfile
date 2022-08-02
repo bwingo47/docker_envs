@@ -348,35 +348,42 @@ RUN ln -s /usr/local/lib/libcoinhsl.so /usr/local/lib/libhsl.so
 
 RUN rm -r /root/.ssh
 
-# # install IPOPT
-# RUN cd /root &&\
-#     git clone https://github.com/bwingo47/Ipopt.git &&\
-#     cd Ipopt &&\
-#     mkdir build && cd build &&\
-#     ./../configure ADD_FFLAGS=-fPIC ADD_CFLAGS=-fPIC ADD_CXXFLAGS=-fPIC &&\
-#     make -j12 &&\
-#     make test &&\
-#     make install
+# install IPOPT
+RUN cd /root &&\
+    git clone https://github.com/bwingo47/Ipopt.git &&\
+    cd Ipopt &&\
+    mkdir build && cd build &&\
+    ./../configure ADD_FFLAGS=-fPIC ADD_CFLAGS=-fPIC ADD_CXXFLAGS=-fPIC &&\
+    make -j12 &&\
+    make test &&\
+    make install
 
-# # compiling parametric sensitivity support 
-# RUN cd /root/Ipopt/build/contrib/sIPOPT &&\
-#     make -j12 &&\
-#     make install
+# compiling parametric sensitivity support 
+RUN cd /root/Ipopt/build/contrib/sIPOPT &&\
+    make -j12 &&\
+    make install
 
-RUN apt-get install -y --no-install-recommends coinor-libipopt-dev
+# RUN apt-get install -y --no-install-recommends coinor-libipopt-dev
 
 
 ## Install CASADI from source 
 RUN cd /root &&\
-    git clone https://github.com/bwingo47/casadi.git &&\
+    git clone --recursive https://github.com/bwingo47/casadi.git &&\
     cd casadi && git checkout master &&\
     mkdir build && cd build &&\
-    cmake -DWITH_PYTHON=ON -DWITH_COMMON=ON -DWITH_OPENMP=ON -DWITH_PYTHON3=ON -DWITH_HSL=ON ..
-    # make -j12 &&\
-    # make install &&\
+    cmake -DWITH_PYTHON=ON -DWITH_COMMON=ON -DWITH_OPENMP=ON -DWITH_PYTHON3=ON -DWITH_HSL=ON .. &&\
+    make -j12 &&\
+    make install
     # make doc
 
-
+# RUN cd /root &&\
+#     git clone --recursive https://github.com/bwingo47/casadi.git &&\
+#     cd casadi && git checkout docker_dev &&\
+#     mkdir build && cd build &&\
+#     cmake -DWITH_PYTHON=ON -DWITH_COMMON=ON -DWITH_OPENMP=ON -DWITH_PYTHON3=ON -DWITH_HSL=ON .. &&\
+#     make -j12 &&\
+#     make install
+#     # make doc
 
 
 ## Add all modified path to .profile so CLion can access these path variables
