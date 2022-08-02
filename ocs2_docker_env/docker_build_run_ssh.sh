@@ -9,7 +9,7 @@ IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
 DOCKERFILE_NAME=ocs2.dockerfile
 # Specify build stage name for multi-target dockerfile
-DOCKERFILE_BUILD_STAGE=REMOTE_ROS_OCS2
+DOCKERFILE_BUILD_STAGE=REMOTE_ROS_SOLVERS
 # Specify docker workspace folder name to be mounted 
 DOCKER_WS=docker_ws
 # Specify github login name
@@ -67,6 +67,8 @@ CUSTOM_USER=remote_usr
 echo "Building docker image"
 docker build -f $DOCKERFILE_NAME \
   --build-arg NVIDIA_DRIVER_VERSION="$NVIDIA_DRIVER_VERSION" \
+  --build-arg SSH_PRV_KEY="$(cat $HOME/.ssh/id_ed25519)" \
+  --build-arg SSH_PUB_KEY="$(cat $HOME/.ssh/id_ed25519.pub)" \
   --build-arg CUSTOM_USER=$CUSTOM_USER \
   --build-arg GIT_LOGIN_EMAIL=$GIT_LOGIN_EMAIL \
   --build-arg DOCKER_WS=$DOCKER_WS \

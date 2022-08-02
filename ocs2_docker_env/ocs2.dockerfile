@@ -277,6 +277,137 @@ USER root
 CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
 
 
+#### REMOTE with ROS, and Optimization Solvers ####
+FROM REMOTE_ROS AS REMOTE_ROS_SOLVERS
+LABEL maintainer="Bruce Wingo" \
+      description="Upgrades the remote ROS environment to have solver dependencies" \
+      version="0.0.1"
+
+## Install APT dependencies packages
+RUN apt update --fix-missing
+RUN apt upgrade -y
+# RUN apt-get install -y --no-install-recommends \
+#     gfortran \
+# 	liblapack-dev \
+#     liblapack64-dev \
+#     libopenblas-dev \
+#     swig \
+#     patch \
+#     libmetis-dev
+
+RUN apt-get install -y --no-install-recommends \
+    gfortran \
+    libblas3 \
+    libblas-dev \
+	liblapack-dev \
+    liblapack3 \
+    swig \
+    patch \
+    libmetis-dev
+
+## Install IPOPT from source follow instructions here: https://coin-or.github.io/Ipopt/INSTALL.html
+
+# Install HSL. coinhsl is a private repo due to licenscing, please request hsl access 
+# from official website: https://www.hsl.rl.ac.uk/ipopt/ and create ur own private repo
+RUN cd /root &&\ 
+    git clone https://github.com/bwingo47/ThirdParty-HSL.git
+
+
+ARG SSH_PRV_KEY
+ARG SSH_PUB_KEY
+
+RUN mkdir -p /root/.ssh &&\
+    echo "$SSH_PRV_KEY" > /root/.ssh/id_ed25519 &&\
+    echo "$SSH_PUB_KEY" > /root/.ssh/id_ed25519.pub &&\
+    chmod 600 /root/.ssh/id_ed25519 &&\
+    chmod 600 /root/.ssh/id_ed25519.pub &&\
+    ssh-keyscan github.com > /root/.ssh/known_hosts
+
+
+ARG path=/usr/local/bin:$PATH
+ARG pkg_config_path=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+ARG ld_library_path=/usr/local/lib:$LD_LIBRARY_PATH
+ARG pythonpath=/usr/local/lib/python3.8/dist-packages:$PYTHONPATH
+ARG cmake_prefix_path=/usr/local:$CMAKE_PREFIX_PATH
+
+ENV PATH=$path
+ENV PKG_CONFIG_PATH=$pkg_config_path
+ENV LD_LIBRARY_PATH=$ld_library_path
+ENV PYTHONPATH=$pythonpath
+ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
+
+
+RUN cd /root/ThirdParty-HSL &&\
+    git clone git@github.com:bwingo47/coinhsl.git &&\
+    ./configure &&\
+    make -j12 &&\
+    make install
+
+# create symbolic link from coinhsl to hsl
+RUN ln -s /usr/local/lib/libcoinhsl.so /usr/local/lib/libhsl.so
+
+RUN rm -r /root/.ssh
+
+# # install IPOPT
+# RUN cd /root &&\
+#     git clone https://github.com/bwingo47/Ipopt.git &&\
+#     cd Ipopt &&\
+#     mkdir build && cd build &&\
+#     ./../configure ADD_FFLAGS=-fPIC ADD_CFLAGS=-fPIC ADD_CXXFLAGS=-fPIC &&\
+#     make -j12 &&\
+#     make test &&\
+#     make install
+
+# # compiling parametric sensitivity support 
+# RUN cd /root/Ipopt/build/contrib/sIPOPT &&\
+#     make -j12 &&\
+#     make install
+
+RUN apt-get install -y --no-install-recommends coinor-libipopt-dev
+
+
+## Install CASADI from source 
+RUN cd /root &&\
+    git clone https://github.com/bwingo47/casadi.git &&\
+    cd casadi && git checkout master &&\
+    mkdir build && cd build &&\
+    cmake -DWITH_PYTHON=ON -DWITH_COMMON=ON -DWITH_OPENMP=ON -DWITH_PYTHON3=ON -DWITH_HSL=ON ..
+    # make -j12 &&\
+    # make install &&\
+    # make doc
+
+
+
+
+## Add all modified path to .profile so CLion can access these path variables
+#  This only works on session restart, need to find better solution
+#  Not sure if this actually works as CLion still can't see the ENV variables
+RUN echo "PATH=$PATH" >> /root/.profile
+RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/.profile
+RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/.profile
+RUN echo "PYTHONPATH=$PYTHONPATH" >> /root/.profile
+RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/.profile
+
+RUN touch /root/clion_env_vars.txt
+RUN echo "PATH=$PATH" >> /root/clion_env_vars.txt
+RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/clion_env_vars.txt
+RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/clion_env_vars.txt
+RUN echo "PYTHONPATH=$PYTHONPATH" >> /root/clion_env_vars.txt
+RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/clion_env_vars.txt
+
+# Add path variables to /etc/environment for all shells 
+RUN echo "PATH=$PATH" >> /etc/environment
+RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /etc/environment
+RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /etc/environment
+RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
+RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
+
+
+
+USER root
+CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+
+
 #### REMOTE with ROS and OCS2 and full dependencies ####
 FROM REMOTE_ROS AS REMOTE_ROS_GEPETTO
 LABEL maintainer="Bruce Wingo" \
@@ -379,6 +510,7 @@ RUN cd /root/pinocchio &&\
 
 USER root
 CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+
 
 
 #### REMOTE with ROS and OCS2 and full dependencies ####
