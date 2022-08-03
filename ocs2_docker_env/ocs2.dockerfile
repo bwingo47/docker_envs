@@ -587,14 +587,14 @@ ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 ## Install Raisim
 
 
-## Install OCS2
-# RUN cd /root/catkin_ws/src &&\
-#     git clone https://github.com/bwingo47/ocs2.git &&\
-#     git clone https://github.com/bwingo47/ocs2_robotic_assets.git &&\
-#     cd .. &&\
-#     catkin build ocs2_robotic_assets &&\
-#     catkin build ocs2_legged_robot_ros
-#     # catkin build ocs2
+## Test install OCS2
+RUN cd /root/catkin_ws/src &&\
+    git clone https://github.com/bwingo47/ocs2.git &&\
+    git clone https://github.com/bwingo47/ocs2_robotic_assets.git &&\
+    cd .. &&\
+    catkin build ocs2_robotic_assets &&\
+    catkin build ocs2_legged_robot_ros
+    # catkin build ocs2
 
 ## Grant $REMOTE_USR root access
 # RUN usermod -aG root $REMOTE_USR
