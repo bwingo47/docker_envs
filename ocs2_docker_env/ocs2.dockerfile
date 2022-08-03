@@ -366,48 +366,58 @@ RUN cd /root/Ipopt/build/contrib/sIPOPT &&\
 # RUN apt-get install -y --no-install-recommends coinor-libipopt-dev
 
 
-## Install CASADI from source 
+## Install CASADI from source (follow https://github.com/casadi/casadi/wiki/InstallationLinux)
 RUN cd /root &&\
     git clone --recursive https://github.com/bwingo47/casadi.git &&\
     cd casadi && git checkout master &&\
     mkdir build && cd build &&\
-    cmake -DWITH_PYTHON=ON -DWITH_COMMON=ON -DWITH_OPENMP=ON -DWITH_PYTHON3=ON -DWITH_HSL=ON .. &&\
+    cmake -DWITH_PYTHON=ON -DWITH_COMMON=ON -DWITH_OPENMP=ON -DWITH_PYTHON3=ON -DWITH_HSL=ON -DWITH_THREAD=ON -DWITH_OSQP=ON .. &&\
     make -j12 &&\
     make install
     # make doc
 
-# RUN cd /root &&\
-#     git clone --recursive https://github.com/bwingo47/casadi.git &&\
-#     cd casadi && git checkout docker_dev &&\
-#     mkdir build && cd build &&\
-#     cmake -DWITH_PYTHON=ON -DWITH_COMMON=ON -DWITH_OPENMP=ON -DWITH_PYTHON3=ON -DWITH_HSL=ON .. &&\
-#     make -j12 &&\
-#     make install
-#     # make doc
+
+## Install CppAD from source (https://coin-or.github.io/CppAD/doc/cmake.htm)
+RUN cd /root &&\
+    git clone --recursive https://github.com/bwingo47/CppAD.git &&\
+    cd CppAD && git checkout master &&\
+    mkdir build && cd build &&\
+    cmake -D include_ipopt=ON -D include_eigen=ON .. &&\
+    make -j12 &&\
+    make install
 
 
-## Add all modified path to .profile so CLion can access these path variables
-#  This only works on session restart, need to find better solution
-#  Not sure if this actually works as CLion still can't see the ENV variables
-RUN echo "PATH=$PATH" >> /root/.profile
-RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/.profile
-RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/.profile
-RUN echo "PYTHONPATH=$PYTHONPATH" >> /root/.profile
-RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/.profile
+## Install CppADCodeGen from source (https://github.com/joaoleal/CppADCodeGen)
+RUN cd /root &&\
+    git clone --recursive https://github.com/bwingo47/CppADCodeGen.git &&\
+    cd CppADCodeGen && git checkout master &&\
+    mkdir build && cd build &&\
+    cmake .. &&\
+    make -j12 &&\
+    make install
 
-RUN touch /root/clion_env_vars.txt
-RUN echo "PATH=$PATH" >> /root/clion_env_vars.txt
-RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/clion_env_vars.txt
-RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/clion_env_vars.txt
-RUN echo "PYTHONPATH=$PYTHONPATH" >> /root/clion_env_vars.txt
-RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/clion_env_vars.txt
+# ## Add all modified path to .profile so CLion can access these path variables
+# #  This only works on session restart, need to find better solution
+# #  Not sure if this actually works as CLion still can't see the ENV variables
+# RUN echo "PATH=$PATH" >> /root/.profile
+# RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/.profile
+# RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/.profile
+# RUN echo "PYTHONPATH=$PYTHONPATH" >> /root/.profile
+# RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/.profile
 
-# Add path variables to /etc/environment for all shells 
-RUN echo "PATH=$PATH" >> /etc/environment
-RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /etc/environment
-RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /etc/environment
-RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
-RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
+# RUN touch /root/clion_env_vars.txt
+# RUN echo "PATH=$PATH" >> /root/clion_env_vars.txt
+# RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/clion_env_vars.txt
+# RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/clion_env_vars.txt
+# RUN echo "PYTHONPATH=$PYTHONPATH" >> /root/clion_env_vars.txt
+# RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/clion_env_vars.txt
+
+# # Add path variables to /etc/environment for all shells 
+# RUN echo "PATH=$PATH" >> /etc/environment
+# RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /etc/environment
+# RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /etc/environment
+# RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
+# RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
 
 
 
@@ -416,7 +426,7 @@ CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
 
 
 #### REMOTE with ROS and OCS2 and full dependencies ####
-FROM REMOTE_ROS AS REMOTE_ROS_GEPETTO
+FROM REMOTE_ROS_SOLVERS AS REMOTE_ROS_GEPETTO
 LABEL maintainer="Bruce Wingo" \
       description="Upgrades the remote ROS environment to have Gepetto team packages" \
       version="0.0.1"
@@ -469,17 +479,17 @@ RUN cd /root/eigenpy &&\
     make -j12 &&\
     make install
 
-ARG path=/usr/local/bin:$PATH
-ARG pkg_config_path=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-ARG ld_library_path=/usr/local/lib:$LD_LIBRARY_PATH
-ARG pythonpath=/usr/local/lib/python3.8/dist-packages:$PYTHONPATH
-ARG cmake_prefix_path=/usr/local:$CMAKE_PREFIX_PATH
+# ARG path=/usr/local/bin:$PATH
+# ARG pkg_config_path=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
+# ARG ld_library_path=/usr/local/lib:$LD_LIBRARY_PATH
+# ARG pythonpath=/usr/local/lib/python3.8/dist-packages:$PYTHONPATH
+# ARG cmake_prefix_path=/usr/local:$CMAKE_PREFIX_PATH
 
-ENV PATH=$path
-ENV PKG_CONFIG_PATH=$pkg_config_path
-ENV LD_LIBRARY_PATH=$ld_library_path
-ENV PYTHONPATH=$pythonpath
-ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
+# ENV PATH=$path
+# ENV PKG_CONFIG_PATH=$pkg_config_path
+# ENV LD_LIBRARY_PATH=$ld_library_path
+# ENV PYTHONPATH=$pythonpath
+# ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
 ## Install hpp-fcl from source
 RUN cd /root &&\
@@ -508,7 +518,13 @@ RUN cd /root/pinocchio &&\
     git checkout master &&\
     mkdir build &&\
     cd build &&\
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -D BUILD_WITH_COLLISION_SUPPORT=ON &&\
+    cmake .. -D CMAKE_BUILD_TYPE=Release \
+             -D CMAKE_INSTALL_PREFIX=/usr/local \
+             -D BUILD_WITH_COLLISION_SUPPORT=ON \
+             -D BUILD_WITH_CASADI_SUPPORT=ON \
+             -D BUILD_WITH_AUTODIFF_SUPPORT=ON \
+             -D BUILD_WITH_CODEGEN_SUPPORT=ON \
+             -D BUILD_WITH_OPENMP_SUPPORT=ON &&\
     make -j12 &&\
     make install
 

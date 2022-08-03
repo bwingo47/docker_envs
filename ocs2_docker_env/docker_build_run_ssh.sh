@@ -9,7 +9,7 @@ IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
 DOCKERFILE_NAME=ocs2.dockerfile
 # Specify build stage name for multi-target dockerfile
-DOCKERFILE_BUILD_STAGE=REMOTE_ROS_SOLVERS
+DOCKERFILE_BUILD_STAGE=REMOTE_ROS_OCS2
 # Specify docker workspace folder name to be mounted 
 DOCKER_WS=docker_ws
 # Specify github login name
