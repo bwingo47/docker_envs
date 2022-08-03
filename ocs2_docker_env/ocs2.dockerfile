@@ -587,7 +587,7 @@ ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 ## Install Raisim
 
 
-## Install OCS2
+## Test install OCS2
 # RUN cd /root/catkin_ws/src &&\
 #     git clone https://github.com/bwingo47/ocs2.git &&\
 #     git clone https://github.com/bwingo47/ocs2_robotic_assets.git &&\
