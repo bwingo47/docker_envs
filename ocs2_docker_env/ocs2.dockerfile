@@ -237,12 +237,15 @@ ENV HOME $home
 RUN rosdep update
 ENV ROS_DISTRO $ROS_DISTRO
 
-# update path for $REMOTE_USR
+# source ros setup in $REMOTE_USR .bashrc
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> $home/.bashrc
 # RUN mkdir -p ~/catkin_ws/src
 
-# update path for root
+# source ros setup in root .bashrc
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
+
+# source ros setup in root .profile
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.profile
 
 ARG path=/opt/ros/$ROS_DISTRO/bin:$PATH
 ARG pkg_config_path=/opt/ros/$ROS_DISTRO/lib/pkgconfig:$PKG_CONFIG_PATH
@@ -561,11 +564,14 @@ RUN cd /root/catkin_ws &&\
     catkin config -DCMAKE_BUILD_TYPE=RelWithDebInfo &&\
     catkin build
 
-# export catkin_ws path to $REMOTE_USR .bashrc
+# source catkin_ws setup in $REMOTE_USR .bashrc
 RUN echo "source /root/catkin_ws/devel/setup.bash" >> $home/.bashrc
 
-# export catkin_ws path to root .bashrc
+# source catkin_ws setup in root .bashrc
 RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.bashrc
+
+# source catkin_ws setup in root .profile
+RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.profile
 
 # update catkin_ws path variables
 ARG pkg_config_path=/root/catkin_ws/devel/lib/pkgconfig:$PKG_CONFIG_PATH
@@ -633,6 +639,15 @@ RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /etc/environment
 RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /etc/environment
 RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
 RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
+
+# source docker_ws setup in $REMOTE_USR .bashrc
+RUN echo "source /root/docker_ws/devel/setup.bash" >> $home/.bashrc
+
+# source docker_ws setup in root .bashrc
+RUN echo "source /root/docker_ws/devel/setup.bash" >> /root/.bashrc
+
+# source docker_ws setup in root .profile
+RUN echo "source /root/docker_ws/devel/setup.bash" >> /root/.profile
 
 
 
