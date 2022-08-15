@@ -14,6 +14,10 @@ DOCKERFILE_BUILD_STAGE=REMOTE_ROS_OCS2
 DOCKER_WS=docker_ws
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
+# Specify the number of CPU cores to run cmake
+NUM_MAKE_CORES=12
+# Specify NVIDIA runtime usage. Set to false if NVIDIA runtime not installed
+USE_NVIDIA_RUNTIME=true
 
 # If the container is running stop it
 if [ "$( docker container inspect -f '{{.State.Running}}' $CONTAINER_NAME )" == "true" ]; then
@@ -22,10 +26,11 @@ fi
 
 # check if nvidia driver is installed, and surpress output
 nvidia-smi 2> /dev/null
-# check exit status should return 127 if command not found
-NVIDIA_DRIVER_INSTALLED=$?
+# Check exit status should return 127 if command not found.  
+# Return 0 if driver is installed
+NVIDIA_DRIVER_INSTALLED_EXIT_STATUS=$?
 
-if [ $NVIDIA_DRIVER_INSTALLED == "0" ]
+if [ $NVIDIA_DRIVER_INSTALLED_EXIT_STATUS == "0" ]
 then
   echo "NVIDIA driver installed, proceed to get driver version"
 
@@ -71,6 +76,7 @@ docker build -f $DOCKERFILE_NAME \
   --build-arg SSH_PUB_KEY="$(cat $HOME/.ssh/id_ed25519.pub)" \
   --build-arg CUSTOM_USER=$CUSTOM_USER \
   --build-arg GIT_LOGIN_EMAIL=$GIT_LOGIN_EMAIL \
+  --build-arg NUM_MAKE_CORES=$NUM_MAKE_CORES \
   --build-arg DOCKER_WS=$DOCKER_WS \
   --target $DOCKERFILE_BUILD_STAGE \
   -t $IMAGE_NAME . || { echo "Build docker failed"; exit 1; }
@@ -136,32 +142,59 @@ echo "Running docker"
 #       --security-opt seccomp=unconfined \
 #       $CONTAINER_NAME
 
-if [ $NVIDIA_DRIVER_INSTALLED == "0" ]
+if [ $NVIDIA_DRIVER_INSTALLED_EXIT_STATUS == "0" ]
 then 
-  echo "running containter with nvidia runtime"
+  echo "nvidia driver installed"
 
-  docker run \
-        -d \
-        --name $CONTAINER_NAME \
-        --hostname localhost \
-        --ipc=host \
-        --net=host \
-        -it \
-        --rm \
-        -e DISPLAY=$DISPLAY \
-        -e XAUTHORITY=$XAUTH \
-        -e QT_X11_NO_MITSHM=1 \
-        -v $XSOCK:$XSOCK:rw \
-        -v $XAUTH:$XAUTH \
-        -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
-        -v $HOME/.ssh:/root/.ssh \
-        --gpus all \
-        --privileged \
-        --runtime=nvidia \
-        --security-opt seccomp=unconfined \
-        $IMAGE_NAME
+  if [ $USE_NVIDIA_RUNTIME = true ]
+  then 
+    echo "running containter with nvidia runtime"
+
+    docker run \
+          -d \
+          --name $CONTAINER_NAME \
+          --hostname localhost \
+          --ipc=host \
+          --net=host \
+          -it \
+          --rm \
+          -e DISPLAY=$DISPLAY \
+          -e XAUTHORITY=$XAUTH \
+          -e QT_X11_NO_MITSHM=1 \
+          -v $XSOCK:$XSOCK:rw \
+          -v $XAUTH:$XAUTH \
+          -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
+          -v $HOME/.ssh:/root/.ssh \
+          --gpus all \
+          --privileged \
+          --runtime=nvidia \
+          --security-opt seccomp=unconfined \
+          $IMAGE_NAME
+  else 
+    echo "nvidia runtime not available"
+
+    docker run \
+          -d \
+          --name $CONTAINER_NAME \
+          --hostname localhost \
+          --ipc=host \
+          --net=host \
+          -it \
+          --rm \
+          -e DISPLAY=$DISPLAY \
+          -e XAUTHORITY=$XAUTH \
+          -e QT_X11_NO_MITSHM=1 \
+          -v $XSOCK:$XSOCK:rw \
+          -v $XAUTH:$XAUTH \
+          -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
+          -v $HOME/.ssh:/root/.ssh \
+          --privileged \
+          --security-opt seccomp=unconfined \
+          $IMAGE_NAME
+  fi
+
 else 
-  echo "nvidia runtime not available"
+  echo "nvidia driver not available"
 
   docker run \
         -d \
