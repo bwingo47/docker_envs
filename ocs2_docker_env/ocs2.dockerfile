@@ -318,6 +318,7 @@ RUN cd /root &&\
 
 ARG SSH_PRV_KEY
 ARG SSH_PUB_KEY
+ARG NUM_MAKE_CORES
 
 RUN mkdir -p /root/.ssh &&\
     echo "$SSH_PRV_KEY" > /root/.ssh/id_ed25519 &&\
@@ -343,7 +344,7 @@ ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 RUN cd /root/ThirdParty-HSL &&\
     git clone git@github.com:bwingo47/coinhsl.git &&\
     ./configure &&\
-    make -j12 &&\
+    make -j$NUM_MAKE_CORES &&\
     make install
 
 # create symbolic link from coinhsl to hsl
@@ -357,13 +358,13 @@ RUN cd /root &&\
     cd Ipopt &&\
     mkdir build && cd build &&\
     ./../configure ADD_FFLAGS=-fPIC ADD_CFLAGS=-fPIC ADD_CXXFLAGS=-fPIC &&\
-    make -j12 &&\
+    make -j$NUM_MAKE_CORES &&\
     make test &&\
     make install
 
 # compiling parametric sensitivity support 
 RUN cd /root/Ipopt/build/contrib/sIPOPT &&\
-    make -j12 &&\
+    make -j$NUM_MAKE_CORES &&\
     make install
 
 # RUN apt-get install -y --no-install-recommends coinor-libipopt-dev
@@ -375,7 +376,7 @@ RUN cd /root &&\
     cd casadi && git checkout master &&\
     mkdir build && cd build &&\
     cmake -DWITH_PYTHON=ON -DWITH_COMMON=ON -DWITH_OPENMP=ON -DWITH_PYTHON3=ON -DWITH_HSL=ON -DWITH_THREAD=ON -DWITH_OSQP=ON .. &&\
-    make -j12 &&\
+    make -j$NUM_MAKE_CORES &&\
     make install
     # make doc
 
@@ -386,7 +387,7 @@ RUN cd /root &&\
     cd CppAD && git checkout master &&\
     mkdir build && cd build &&\
     cmake -D include_ipopt=ON -D include_eigen=ON .. &&\
-    make -j12 &&\
+    make -j$NUM_MAKE_CORES &&\
     make install
 
 
@@ -396,7 +397,7 @@ RUN cd /root &&\
     cd CppADCodeGen && git checkout master &&\
     mkdir build && cd build &&\
     cmake .. &&\
-    make -j12 &&\
+    make -j$NUM_MAKE_CORES &&\
     make install
 
 # ## Add all modified path to .profile so CLion can access these path variables
@@ -479,7 +480,7 @@ RUN cd /root/eigenpy &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
-    make -j12 &&\
+    make -j$NUM_MAKE_CORES &&\
     make install
 
 # ARG path=/usr/local/bin:$PATH
@@ -505,7 +506,7 @@ RUN cd /root/hpp-fcl &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
-    make -j12 &&\
+    make -j$NUM_MAKE_CORES &&\
     make install
 
 
@@ -528,7 +529,7 @@ RUN cd /root/pinocchio &&\
              -D BUILD_WITH_AUTODIFF_SUPPORT=ON \
              -D BUILD_WITH_CODEGEN_SUPPORT=ON \
              -D BUILD_WITH_OPENMP_SUPPORT=ON &&\
-    make -j12 &&\
+    make -j$NUM_MAKE_CORES &&\
     make install
 
 
