@@ -84,6 +84,7 @@ then
           -v $XAUTH:$XAUTH \
           -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
           -v $HOME/.ssh:/root/.ssh \
+          -v $HOME/.drake_gdb:/root/.drake_gdb \
           --gpus all \
           --privileged \
           --runtime=nvidia \
@@ -107,6 +108,7 @@ then
           -v $XAUTH:$XAUTH \
           -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
           -v $HOME/.ssh:/root/.ssh \
+          -v $HOME/.drake_gdb:/root/.drake_gdb \
           --privileged \
           --security-opt seccomp=unconfined \
           $IMAGE_NAME
@@ -130,6 +132,7 @@ else
         -v $XAUTH:$XAUTH \
         -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
         -v $HOME/.ssh:/root/.ssh \
+        -v $HOME/.drake_gdb:/root/.drake_gdb \
         --privileged \
         --security-opt seccomp=unconfined \
         $IMAGE_NAME

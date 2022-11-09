@@ -123,6 +123,15 @@ RUN git config --system user.email "$GIT_LOGIN_EMAIL"
 # RUN umask u=rwx,g=rwx,o=rwx
 RUN echo "umask u=rwx,g=rwx,o=rwx" >> /root/.profile
 
+# configure gpd eigen pretty printers 
+RUN touch /root/.gdbinit
+RUN echo "python" >> /root/.gdbinit
+RUN echo "import sys" >> /root/.gdbinit
+RUN echo "sys.path.insert(0, \"/root/.drake_gdb\")" >> /root/.gdbinit
+RUN echo "import drake_gdb" >> /root/.gdbinit
+RUN echo "drake_gdb.register_printers()" >> /root/.gdbinit
+RUN echo "end" >> /root/.gdbinit
+
 ## Bring up bash 
 CMD ["bash"]
 
@@ -137,6 +146,8 @@ LABEL maintainer="Bruce Wingo" \
                    ssh into root required additional configuration" \
       version="0.0.1"
 
+ARG EXPOSED_PORT
+ENV EXPOSED_PORT $EXPOSED_PORT
 ARG REMOTE_USR=remote_usr
 ARG home=/home/$REMOTE_USR
 
@@ -175,8 +186,8 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 # see https://stackoverflow.com/questions/36292317/why-set-visible-now-in-etc-profile
 ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
-# expose port 22 for ssh server, and 7777 for gdb server
-RUN sed -i 's/Port 22/Port 7777/' /etc/ssh/sshd_config
+# expose port 22 for ssh server, and $EXPOSED_PORT for gdb server
+RUN sed -i 's/Port 22/Port $EXPOSED_PORT/' /etc/ssh/sshd_config
 
 # create container user $REMOTE_USR and set default shell
 RUN useradd -ms /bin/bash $REMOTE_USR
@@ -187,17 +198,17 @@ USER $REMOTE_USR
 ENV HOME $home
 
 USER root
-# run sshd in detached mode "-D", and open port 7777
+# run sshd in detached mode "-D", and open port $EXPOSED_PORT
 # !!!! to run the container on the same network as the local machine,
 # use '--net=host' option for docker run,
 # also set '--hostname localhost' and '--ipc=host'
 # if both container and local machine runs on the same network, 
-# then the follong CMD instuction will open the port 7777 on localhost of the local machine
+# then the follong CMD instuction will open the port $EXPOSED_PORT on localhost of the local machine
 # and there is no need to map ports using the -p flag of docker run.
-# i.e. 'ssh remote_usr@localhost -p 7777' will ssh into the container
-# otherwise '-p 127.0.0.1:[localhost_port_number]:7777' is needed when docker run to map ports
+# i.e. 'ssh remote_usr@localhost -p $EXPOSED_PORT' will ssh into the container
+# otherwise '-p 127.0.0.1:[localhost_port_number]:$EXPOSED_PORT' is needed when docker run to map ports
 # for this, use 'ssh remote_usr@localhost -p [localhost_port_number]' to remote into container
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+CMD ["/usr/sbin/sshd", "-D", "-p", "7778"]
 
 
 #### REMOTE with ROS ####
@@ -277,7 +288,7 @@ ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 # ENV environment-variable-name environment-variable-value
 
 USER root
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+CMD ["/usr/sbin/sshd", "-D", "-p", "7778"]
 
 
 #### REMOTE with ROS, and Optimization Solvers ####
@@ -385,8 +396,8 @@ RUN cd /root &&\
 
 ## Install CppAD from source (https://coin-or.github.io/CppAD/doc/cmake.htm)
 RUN cd /root &&\
-    git clone --recursive https://github.com/bwingo47/CppAD.git &&\
-    cd CppAD && git checkout master &&\
+    git clone --recursive https://github.com/coin-or/CppAD.git &&\
+    cd CppAD && git checkout stable/20210000 &&\
     mkdir build && cd build &&\
     cmake -D include_ipopt=ON -D include_eigen=ON .. &&\
     make -j$NUM_MAKE_CORES &&\
@@ -428,11 +439,11 @@ RUN cd /root &&\
 
 
 USER root
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+CMD ["/usr/sbin/sshd", "-D", "-p", "7778"]
 
 
 #### REMOTE with ROS and OCS2 and full dependencies ####
-FROM REMOTE_ROS_SOLVERS AS REMOTE_ROS_GEPETTO
+FROM REMOTE_ROS_SOLVERS AS REMOTE_ROS_GEPETTO_PINOCCHIO3
 LABEL maintainer="Bruce Wingo" \
       description="Upgrades the remote ROS environment to have Gepetto team packages" \
       version="0.0.1"
@@ -473,16 +484,16 @@ RUN apt update --fix-missing \
 
 ## Install eigenpy from source 
 RUN cd /root &&\
-    git clone --recursive https://github.com/bwingo47/eigenpy.git
+    git clone --recursive https://github.com/stack-of-tasks/eigenpy.git
     # git clone --recursive https://github.com/stack-of-tasks/eigenpy.git
 
 RUN cd /root/eigenpy &&\
     # git checkout f53d37e0f732361f338769b730a129e2da9b6a46 &&\
-    git checkout master &&\
+    git checkout v2.6.2 &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
-    make -j$NUM_MAKE_CORES &&\
+    make -j12 &&\
     make install
 
 # ARG path=/usr/local/bin:$PATH
@@ -499,53 +510,51 @@ RUN cd /root/eigenpy &&\
 
 ## Install hpp-fcl from source
 RUN cd /root &&\
-    git clone --recursive https://github.com/bwingo47/hpp-fcl.git
+    git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git
     # git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git 
 
 RUN cd /root/hpp-fcl &&\
     # git checkout c8373f933ec0fe9fbded6f8d1235f6fc08845ada &&\
-    git checkout devel &&\
+    git checkout v1.8.1 &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
-    make -j$NUM_MAKE_CORES &&\
+    make -j12 &&\
     make install
 
 
 ## Install pinocchio from source
 RUN cd /root &&\ 
-    git clone --recursive https://github.com/bwingo47/pinocchio.git
+    git clone --recursive https://github.com/stack-of-tasks/pinocchio.git
     # git clone --recursive https://github.com/stack-of-tasks/pinocchio
 
 
 # must using turn on BUILD_WITH_COLLISION_SUPPORT option during cmake .. 
 # otherwise ocs2_pinocchio (specifically ocs2_self_collision) won't build
 RUN cd /root/pinocchio &&\
-    # git checkout 5c93f4e043886ec43659a10a79701263a1e8fa18 &&\
-    git checkout master &&\
+    git checkout v2.9.1 &&\
     mkdir build &&\
     cd build &&\
     cmake .. -D CMAKE_BUILD_TYPE=Release \
              -D CMAKE_INSTALL_PREFIX=/usr/local \
+             -D BUILD_PYTHON_INTERFACE=ON \
              -D BUILD_WITH_COLLISION_SUPPORT=ON \
              -D BUILD_WITH_CASADI_SUPPORT=ON \
              -D BUILD_WITH_AUTODIFF_SUPPORT=ON \
-             -D BUILD_WITH_CODEGEN_SUPPORT=ON \
-             -D BUILD_WITH_OPENMP_SUPPORT=ON &&\
+             -D BUILD_WITH_CODEGEN_SUPPORT=ON &&\
     make -j12 &&\
     make install
 
 
 
 
-
 USER root
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+CMD ["/usr/sbin/sshd", "-D", "-p", "7778"]
 
 
 
 #### REMOTE with ROS and OCS2 and full dependencies ####
-FROM REMOTE_ROS_GEPETTO AS REMOTE_ROS_OCS2
+FROM REMOTE_ROS_GEPETTO_PINOCCHIO3 AS REMOTE_ROS_OCS2_PINOCCHIO_3
 LABEL maintainer="Bruce Wingo" \
       description="Upgrades the remote ROS Gepetto environment to have full OCS2" \
       version="0.0.1"
@@ -612,8 +621,18 @@ ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
 
 
-# update docker_ws path variables
+# Make and initialize $DOCKER_WS
 ARG DOCKER_WS
+# RUN cd /root/$DOCKER_WS &&\
+#     mkdir src
+
+# RUN cd /root/$DOCKER_WS &&\
+#     catkin init &&\
+#     catkin config --extend /opt/ros/$ROS_DISTRO &&\
+#     catkin config -DCMAKE_BUILD_TYPE=RelWithDebInfo &&\
+#     catkin build
+
+# update $DOCKER_WS path variables
 ARG pkg_config_path=/root/$DOCKER_WS/devel/lib/pkgconfig:$PKG_CONFIG_PATH
 ARG ld_library_path=/root/$DOCKER_WS/devel/lib:$LD_LIBRARY_PATH
 ARG cmake_prefix_path=/root/$DOCKER_WS/devel:$CMAKE_PREFIX_PATH
@@ -646,22 +665,14 @@ RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
 RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
 
 # source docker_ws setup in $REMOTE_USR .bashrc
-RUN echo "source /root/docker_ws/devel/setup.bash" >> $home/.bashrc
+RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> $home/.bashrc
 
 # source docker_ws setup in root .bashrc
-RUN echo "source /root/docker_ws/devel/setup.bash" >> /root/.bashrc
+RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc
 
 # source docker_ws setup in root .profile
-RUN echo "source /root/docker_ws/devel/setup.bash" >> /root/.profile
+RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
 
-# configure gpd eigen pretty printers 
-RUN touch /root/.gdbinit
-RUN echo "python" >> /root/.gdbinit
-RUN echo "import sys" >> /root/.gdbinit
-RUN echo "sys.path.insert(0, \"/root/.drake_gdb\")" >> /root/.gdbinit
-RUN echo "import drake_gdb" >> /root/.gdbinit
-RUN echo "drake_gdb.register_printers()" >> /root/.gdbinit
-RUN echo "end" >> /root/.gdbinit
 
 
 
@@ -671,101 +682,18 @@ RUN echo "end" >> /root/.gdbinit
 # RUN touch /root/start.sh
 # RUN chmod +x /root/start.sh
 # RUN echo "#!/usr/bin/env bash" >> /root/start.sh
-# RUN echo "/usr/sbin/sshd -D -p 7777" >> /root/start.sh
+# RUN echo "/usr/sbin/sshd -D -p $EXPOSED_PORT" >> /root/start.sh
 
+# ARG EXPOSED_PORT=7778
+# ENV EXPOSED_PORT ${EXPOSED_PORT}
 
-
-
+RUN echo "${EXPOSED_PORT}"
 
 USER root
 # ENTRYPOINT ["/root/start.sh"]
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+CMD ["/usr/sbin/sshd", "-D", "-p", "7778"]
 
 
 
-#### REMOTE with NVIDIA Driver ####
-## fist, need to install nvidia-container-runtime on local host
-## follow https://github.com/nvidia/nvidia-container-runtime#docker-engine-setup for your OS
-## then follow the 'Docker Engine setup' section to setup nvidia runtime for docker
-FROM REMOTE AS REMOTE_NVIDIA
-LABEL maintainer="Bruce Wingo" \
-      description="Upgrades the remote environment to have nvidia driver" \
-      version="0.0.1"
-
-ARG REMOTE_USR=remote_usr
-ARG NVIDIA_DRIVER_VERSION
-
-## Install Nvidia Drivers
-RUN add-apt-repository ppa:graphics-drivers
-RUN apt update --fix-missing
-RUN apt install -y --no-install-recommends nvidia-driver-$NVIDIA_DRIVER_VERSION
-
-# test gui passthrough using firefox
-# RUN apt-get install -y --no-install-recommends firefox
-
-RUN apt autoclean
-RUN apt autoremove
-RUN apt clean
-RUN rm -rf /var/lib/apt/lists/*
-
-USER root
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
-
-
-
-#### REMOTE with NVIDIA Driver and ROS ####
-FROM REMOTE_NVIDIA AS REMOTE_NVIDIA_ROS
-LABEL maintainer="Bruce Wingo" \
-      description="Upgrades the remote environment to have nvidia driver and full ROS desktop" \
-      version="0.0.1"
-
-## Install ROS
-ARG REMOTE_USR=remote_usr
-ARG home=/home/$REMOTE_USR
-ARG ROS_DISTRO=noetic
-RUN echo "deb [trusted=yes] http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list
-RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add -
-RUN apt update --fix-missing
-RUN apt-get install -y --no-install-recommends \
-	ros-${ROS_DISTRO}-desktop-full
-# Install what you want (remember the '\')
-
-RUN apt-get install -y --no-install-recommends \
-    python3-rosdep \
-    python3-rosinstall \
-    python3-rosinstall-generator \
-    python3-wstool
-
-RUN rosdep init
-
-# clean up
-RUN apt autoclean
-RUN apt autoremove
-RUN apt clean
-RUN rm -rf /var/lib/apt/lists/*
-
-
-USER $REMOTE_USR
-ENV HOME $home
-RUN rosdep update
-ENV ROS_DISTRO $ROS_DISTRO
-RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc
-RUN mkdir -p ~/catkin_ws/src
-
-RUN source /opt/ros/${ROS_DISTRO}/setup.bash &&\
-    cd ~/catkin_ws &&\
-    catkin_make &&\
-    source devel/setup.bash
-RUN echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bashrc
-
-# RUN roscore &
-
-# ENV environment-variable-name environment-variable-value
-
-USER root
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
-
-
-# Install clion somehow
 
 
