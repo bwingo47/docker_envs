@@ -176,7 +176,7 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
 # expose port 22 for ssh server, and 7777 for gdb server
-RUN sed -i 's/Port 22/Port 7777/' /etc/ssh/sshd_config
+# RUN sed -i 's/Port 22/Port 7777/' /etc/ssh/sshd_config
 
 # create container user $REMOTE_USR and set default shell
 RUN useradd -ms /bin/bash $REMOTE_USR
@@ -200,8 +200,50 @@ USER root
 CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
 
 
+#### REMOTE with VNC ####
+## can only ssh into REMOTE_USR for now, 
+## ssh into root required additional configuration
+FROM remote AS remote_vnc
+LABEL maintainer="Bruce Wingo" \
+      description="Added vnc x11 rendering to REMOTE." \
+      version="0.0.1"
+
+ARG STARTUP_FOLDER
+
+RUN apt update \
+    && apt install -y --no-install-recommends --allow-unauthenticated \
+        xvfb \
+        x11vnc \
+        firefox \ 
+        ttf-ubuntu-font-family \
+        ttf-wqy-zenhei \
+        fluxbox \
+        net-tools \
+        novnc \
+        supervisor \
+        xterm \
+    && apt autoclean -y \
+    && apt autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Setup visual environment variables
+ENV LC_ALL=C.UTF-8 \
+    DISPLAY=:0.0 \
+    DISPLAY_WIDTH=1024 \
+    DISPLAY_HEIGHT=768 \
+    DISPLAY_DEPTh=32
+
+RUN echo "export DISPLAY=$DISPLAY" >> /root/.profile
+RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /root/.profile
+RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /root/.profile
+RUN echo "export DISPLAY_DEPTh=$DISPLAY_DEPTh" >> /root/.profile
+
+USER root
+CMD ["/root/startup/entrypoint.sh"]
+# EXPOSE 8080
+
 #### REMOTE with ROS ####
-FROM remote AS remote_ros
+FROM remote_vnc AS remote_ros
 LABEL maintainer="Bruce Wingo" \
       description="Upgrades the remote environment to have full ROS desktop" \
       version="0.0.1"
@@ -277,7 +319,7 @@ ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 # ENV environment-variable-name environment-variable-value
 
 USER root
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+ENTRYPOINT ["/root/startup/entrypoint.sh"]
 
 
 #### REMOTE with ROS, and Optimization Solvers ####

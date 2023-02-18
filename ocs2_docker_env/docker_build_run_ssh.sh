@@ -9,15 +9,17 @@ IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
 DOCKERFILE_NAME=ocs2.dockerfile
 # Specify build stage name for multi-target dockerfile
-DOCKERFILE_BUILD_STAGE=REMOTE_ROS_OCS2
+DOCKERFILE_BUILD_STAGE=remote_ros_gepetto
 # Specify docker workspace folder name to be mounted 
 DOCKER_WS=docker_ws
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
 # Specify the number of CPU cores to run cmake
-NUM_MAKE_CORES=12
+NUM_MAKE_CORES=4
 # Specify NVIDIA runtime usage. Set to false if NVIDIA runtime not installed
 USE_NVIDIA_RUNTIME=true
+# Specify localhost name
+LOCALHOSTNAME=localhost
 
 # If the container is running stop it
 if [ "$( docker container inspect -f '{{.State.Running}}' $CONTAINER_NAME )" == "true" ]; then
@@ -142,6 +144,14 @@ echo "Running docker"
 #       --security-opt seccomp=unconfined \
 #       $CONTAINER_NAME
 
+# Set up XQuartz https://gist.github.com/cschiewek/246a244ba23da8b9f0e7b11a68bf3285
+xhost +
+# xhost + ${hostname}
+# export HOSTNAME=`hostname`
+# defaults write org.macosforge.xquartz.X11 enable_iglx -bool true
+# defaults write org.xquartz.X11 enable_iglx -bool true
+
+
 if [ $NVIDIA_DRIVER_INSTALLED_EXIT_STATUS == "0" ]
 then 
   echo "nvidia driver installed"
@@ -153,7 +163,7 @@ then
     docker run \
           -d \
           --name $CONTAINER_NAME \
-          --hostname localhost \
+          --hostname $LOCALHOSTNAME \
           --ipc=host \
           --net=host \
           -it \
@@ -177,7 +187,7 @@ then
     docker run \
           -d \
           --name $CONTAINER_NAME \
-          --hostname localhost \
+          --hostname $LOCALHOSTNAME \
           --ipc=host \
           --net=host \
           -it \
@@ -201,16 +211,13 @@ else
   docker run \
         -d \
         --name $CONTAINER_NAME \
-        --hostname localhost \
+        --hostname $LOCALHOSTNAME \
         --ipc=host \
-        --net=host \
+        -p 7777:7777 \
         -it \
         --rm \
-        -e DISPLAY=$DISPLAY \
-        -e XAUTHORITY=$XAUTH \
-        -e QT_X11_NO_MITSHM=1 \
-        -v $XSOCK:$XSOCK:rw \
-        -v $XAUTH:$XAUTH \
+        -e DISPLAY=host.docker.internal:0 \
+        -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
         -v $HOME/.ssh:/root/.ssh \
         -v $HOME/.drake_gdb:/root/.drake_gdb \
@@ -219,7 +226,7 @@ else
         $IMAGE_NAME
 fi
 
-ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:7777"
+ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[$LOCALHOSTNAME]:7777"
 
 ssh root@localhost -X -p 7777
 
