@@ -31,36 +31,48 @@ RUN apt-get install -y --no-install-recommends \
     clang-format-10 \
     clang-tidy-10 \
     clang-format-12 \
-    clang-tidy-12 
-
-RUN apt update --fix-missing
-RUN apt upgrade -y
-RUN apt-get install -y --no-install-recommends \
-	curl \
-	doxygen \
-    doxygen-latex \
-	libeigen3-dev \
-	gdb \
+    clang-tidy-12 \
+    gdb \
     gdbserver \
-	git \
+    curl \
+    git \
     git-lfs \
-    gnupg \
-    lcov \
-    libboost-all-dev \
-    libopencv-dev \
-    libtbb-dev \
-    lsb-core \
-	python3 \
-    python3-tk \
-    python3-apt \
-    python3-distutils \
-    python3-opencv \
-    python3-pip \
     software-properties-common \
 	tmux \
     wget \
 	libglu1-mesa-dev \
     xorg-dev
+
+RUN apt update --fix-missing
+RUN apt upgrade -y
+RUN apt-get install -y --no-install-recommends \
+	libeigen3-dev \
+    gnupg \
+    lcov \
+    libboost-all-dev \
+    libopencv-dev \
+    libtbb-dev \
+    lsb-core 
+
+RUN apt update --fix-missing
+RUN apt upgrade -y
+RUN apt-get install -y --no-install-recommends \    
+	python3 \
+    python3-tk \
+    python3-apt \
+    python3-distutils \
+    python3-opencv \
+    python3-pip
+
+# ENV LC_ALL="en_US.UTF-8"
+# RUN dpkg-reconfigure locales
+
+RUN apt update --fix-missing
+RUN apt upgrade -y
+RUN apt-get install -y --no-install-recommends \
+    doxygen 
+    # doxygen-latex 
+    
 # Install what you want (remember the ' \')
 
 ## Setup alternatives python 
@@ -701,14 +713,14 @@ RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /etc/environment
 RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
 RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
 
-# source $DOCKER_WS setup in $REMOTE_USR .bashrc
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> $home/.bashrc
+# source docker_ws setup in $REMOTE_USR .bashrc
+RUN echo "source /root/docker_ws/devel/setup.bash" >> $home/.bashrc
 
-# source $DOCKER_WS setup in root .bashrc
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc
+# source docker_ws setup in root .bashrc
+RUN echo "source /root/docker_ws/devel/setup.bash" >> /root/.bashrc
 
-# source $DOCKER_WS setup in root .profile
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
+# source docker_ws setup in root .profile
+RUN echo "source /root/docker_ws/devel/setup.bash" >> /root/.profile
 
 # configure gpd eigen pretty printers 
 RUN touch /root/.gdbinit

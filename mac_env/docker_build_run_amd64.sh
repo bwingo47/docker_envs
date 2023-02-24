@@ -3,15 +3,15 @@
 # Specify docke user name
 DOCKER_USR=bwingo47
 # Specify name of container
-CONTAINER_NAME=mac-vnc-container
+CONTAINER_NAME=mac-amd64-container
 # Specify name of image (repository)
 IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
-DOCKERFILE_NAME=mac_vnc.dockerfile
+DOCKERFILE_NAME=mac_amd64.dockerfile
 # Specify build stage name for multi-target dockerfile
 DOCKERFILE_BUILD_STAGE=remote_ros_ocs2
 # Specify docker workspace folder name to be mounted 
-DOCKER_WS=docker_arm64_ws
+DOCKER_WS=docker_ws
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
 # Specify the number of CPU cores to run cmake
@@ -32,7 +32,8 @@ fi
 CUSTOM_USER=remote_usr
 
 echo "Building docker image"
-docker build -f $DOCKERFILE_NAME \
+docker buildx build -f $DOCKERFILE_NAME \
+  --platform linux/amd64 \
   --build-arg NVIDIA_DRIVER_VERSION="$NVIDIA_DRIVER_VERSION" \
   --build-arg SSH_PRV_KEY="$(cat $HOME/.ssh/id_ed25519)" \
   --build-arg SSH_PUB_KEY="$(cat $HOME/.ssh/id_ed25519.pub)" \
@@ -59,6 +60,7 @@ echo "Container spinning up"
 
 docker run \
       -d \
+      --platform linux/amd64 \
       --name $CONTAINER_NAME \
       --hostname $LOCALHOSTNAME \
       --ipc=host \
@@ -76,7 +78,7 @@ docker run \
 
 if [ "$( docker container inspect -f '{{.State.Status}}' $CONTAINER_NAME )" == "running" ]; then
   echo "Container is up"
-  sleep 2;
+  sleep 4;
 fi
 
 /bin/bash $PWD/run_ssh.sh 

@@ -478,7 +478,7 @@ ENTRYPOINT ["/root/startup/entrypoint.sh"]
 
 
 #### REMOTE with ROS and OCS2 and full dependencies ####
-FROM remote_ros_solvers AS remote_ros_gepetto
+FROM remote_ros_solvers AS remote_ros_crocoddyl
 LABEL maintainer="Bruce Wingo" \
       description="Upgrades the remote ROS environment to have Gepetto team packages" \
       version="0.0.1"
@@ -507,50 +507,27 @@ RUN apt update --fix-missing \
      ros-$ROS_DISTRO-rqt-multiplot \
      ros-$ROS_DISTRO-grid-map-msgs
 
-## Install robotpkg binaries 
-# install binaries from robotpkg
-# RUN sh -c "echo 'deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub \
-#  $(lsb_release -cs) robotpkg' >> /etc/apt/sources.list.d/robotpkg.list"
-# RUN curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | apt-key add -
-# RUN apt-get update \
-#   && apt-get install -y --no-install-recommends \
-#      robotpkg-py38-eigenpy
-#     #  robotpkg-hpp-fcl
 
 ## Install eigenpy from source 
 RUN cd /root &&\
-    git clone --recursive https://github.com/bwingo47/eigenpy.git
-    # git clone --recursive https://github.com/stack-of-tasks/eigenpy.git
+    git clone https://github.com/stack-of-tasks/eigenpy.git
 
 RUN cd /root/eigenpy &&\
-    # git checkout f53d37e0f732361f338769b730a129e2da9b6a46 &&\
-    git checkout master &&\
+    git checkout v2.7.11 &&\
+    git submodule update --init --recursive &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
     make &&\
     make install
 
-# ARG path=/usr/local/bin:$PATH
-# ARG pkg_config_path=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-# ARG ld_library_path=/usr/local/lib:$LD_LIBRARY_PATH
-# ARG pythonpath=/usr/local/lib/python3.8/dist-packages:$PYTHONPATH
-# ARG cmake_prefix_path=/usr/local:$CMAKE_PREFIX_PATH
-
-# ENV PATH=$path
-# ENV PKG_CONFIG_PATH=$pkg_config_path
-# ENV LD_LIBRARY_PATH=$ld_library_path
-# ENV PYTHONPATH=$pythonpath
-# ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
-
 ## Install hpp-fcl from source
 RUN cd /root &&\
-    git clone --recursive https://github.com/bwingo47/hpp-fcl.git
-    # git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git 
+    git clone https://github.com/humanoid-path-planner/hpp-fcl.git 
 
 RUN cd /root/hpp-fcl &&\
-    # git checkout c8373f933ec0fe9fbded6f8d1235f6fc08845ada &&\
-    git checkout devel &&\
+    git checkout v2.2.0 &&\
+    git submodule update --init --recursive &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
@@ -560,39 +537,58 @@ RUN cd /root/hpp-fcl &&\
 
 ## Install pinocchio from source
 RUN cd /root &&\ 
-    git clone --recursive https://github.com/bwingo47/pinocchio.git
-    # git clone --recursive https://github.com/stack-of-tasks/pinocchio
+    git clone https://github.com/stack-of-tasks/pinocchio.git
 
 
 # must using turn on BUILD_WITH_COLLISION_SUPPORT option during cmake .. 
 # otherwise ocs2_pinocchio (specifically ocs2_self_collision) won't build
 RUN cd /root/pinocchio &&\
-    # git checkout 5c93f4e043886ec43659a10a79701263a1e8fa18 &&\
-    git checkout master &&\
+    git checkout v2.6.17 &&\
+    git submodule update --init --recursive &&\
     mkdir build &&\
     cd build &&\
     cmake .. -D CMAKE_BUILD_TYPE=Release \
              -D CMAKE_INSTALL_PREFIX=/usr/local \
+             -D BUILD_WITH_URDF_SUPPORT=ON \
              -D BUILD_WITH_COLLISION_SUPPORT=ON \
              -D BUILD_WITH_CASADI_SUPPORT=ON \
              -D BUILD_WITH_AUTODIFF_SUPPORT=ON \
-             -D BUILD_WITH_CODEGEN_SUPPORT=ON \
              -D BUILD_WITH_OPENMP_SUPPORT=ON &&\
     make &&\
     make install
 
-# RUN mv /usr/lib/aarch64-linux-gnu/libOpenGL.so.0.0.0 /usr/lib/aarch64-linux-gnu/libOpenGL.so.0.0.0.orig &&\
-#     ln -s /usr/lib/aarch64-linux-gnu/libGL.so.1 /usr/lib/aarch64-linux-gnu/libOpenGL.so.0.0.0
 
-# RUN apt-get update \
-#   && apt-get install -y --no-install-recommends \
-#      libgl1-mesa-glx \
-#      firefox
+## Install example-robot-data from source
+RUN cd /root &&\
+    git clone https://github.com/bwingo47/example-robot-data.git
 
-# # 
-# RUN echo "LIBGL_ALWAYS_INDIRECT=1" >> $home/.bashrc
-# RUN echo "LIBGL_ALWAYS_INDIRECT=1" >> /root/.bashrc
-# RUN echo "LIBGL_ALWAYS_INDIRECT=1" >> /root/.profile
+RUN cd /root/example-robot-data &&\
+    git checkout cppad_codegen_fix &&\
+    git submodule update --init --recursive &&\
+    mkdir build &&\
+    cd build &&\
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
+    make &&\
+    make install
+
+## Write Crocoddyl install script to container
+ARG DOCKER_WS
+
+RUN touch /root/install_crocoddyl.sh
+RUN echo " " >> /root/install_crocoddyl.sh
+RUN echo "#!/usr/bin/env bash" >> /root/install_crocoddyl.sh
+RUN echo "cd /root/$DOCKER_WS" >> /root/install_crocoddyl.sh
+RUN echo "git clone https://github.com/loco-3d/crocoddyl.git" >> /root/install_crocoddyl.sh
+RUN echo "cd /root/$DOCKER_WS/crocoddyl" >> /root/install_crocoddyl.sh
+RUN echo "git checkout v1.9.0" >> /root/install_crocoddyl.sh
+RUN echo "git submodule update --init --recursive" >> /root/install_crocoddyl.sh
+RUN echo "mkdir build && cd build" >> /root/install_crocoddyl.sh
+RUN echo "cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_WITH_MULTITHREADS=ON" >> /root/install_crocoddyl.sh
+RUN echo "make" >> /root/install_crocoddyl.sh
+RUN echo "make install" >> /root/install_crocoddyl.sh
+RUN echo " " >> /root/install_crocoddyl.sh
+
+RUN chmod +x /root/install_crocoddyl.sh
 
 
 USER root
@@ -601,7 +597,7 @@ ENTRYPOINT ["/root/startup/entrypoint.sh"]
 
 
 #### REMOTE with ROS and OCS2 and full dependencies ####
-FROM remote_ros_gepetto AS remote_ros_ocs2
+FROM remote_ros_crocoddyl AS remote_crocoddyl_dev
 LABEL maintainer="Bruce Wingo" \
       description="Upgrades the remote ROS Gepetto environment to have full OCS2" \
       version="0.0.1"
@@ -669,10 +665,10 @@ ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
 
 # update docker_ws path variables
-ARG DOCKER_WS
-ARG pkg_config_path=/root/$DOCKER_WS/devel/lib/pkgconfig:$PKG_CONFIG_PATH
-ARG ld_library_path=/root/$DOCKER_WS/devel/lib:$LD_LIBRARY_PATH
-ARG cmake_prefix_path=/root/$DOCKER_WS/devel:$CMAKE_PREFIX_PATH
+# ARG DOCKER_WS
+# ARG pkg_config_path=/root/$DOCKER_WS/devel/lib/pkgconfig:$PKG_CONFIG_PATH
+# ARG ld_library_path=/root/$DOCKER_WS/devel/lib:$LD_LIBRARY_PATH
+# ARG cmake_prefix_path=/root/$DOCKER_WS/devel:$CMAKE_PREFIX_PATH
 
 ENV PKG_CONFIG_PATH=$pkg_config_path
 ENV LD_LIBRARY_PATH=$ld_library_path
@@ -702,13 +698,13 @@ RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
 RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
 
 # source $DOCKER_WS setup in $REMOTE_USR .bashrc
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> $home/.bashrc
+# RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> $home/.bashrc
 
 # source $DOCKER_WS setup in root .bashrc
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc
+# RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc
 
 # source $DOCKER_WS setup in root .profile
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
+# RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
 
 # configure gpd eigen pretty printers 
 RUN touch /root/.gdbinit

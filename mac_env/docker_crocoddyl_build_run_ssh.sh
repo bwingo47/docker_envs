@@ -3,15 +3,15 @@
 # Specify docke user name
 DOCKER_USR=bwingo47
 # Specify name of container
-CONTAINER_NAME=mac-vnc-container
+CONTAINER_NAME=mac-crocoddyl-container
 # Specify name of image (repository)
 IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
-DOCKERFILE_NAME=mac_vnc.dockerfile
+DOCKERFILE_NAME=mac_vnc_crocoddyl.dockerfile
 # Specify build stage name for multi-target dockerfile
-DOCKERFILE_BUILD_STAGE=remote_ros_ocs2
+DOCKERFILE_BUILD_STAGE=remote_crocoddyl_dev
 # Specify docker workspace folder name to be mounted 
-DOCKER_WS=docker_arm64_ws
+DOCKER_WS=docker_crocoddyl_ws
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
 # Specify the number of CPU cores to run cmake
