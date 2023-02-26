@@ -127,6 +127,16 @@ RUN git config --system user.email "$GIT_LOGIN_EMAIL"
 # RUN umask u=rwx,g=rwx,o=rwx
 RUN echo "umask u=rwx,g=rwx,o=rwx" >> /root/.profile
 
+# configure gpd eigen pretty printers 
+RUN touch /root/.gdbinit
+RUN echo "python" >> /root/.gdbinit
+RUN echo "import sys" >> /root/.gdbinit
+RUN echo "sys.path.insert(0, \"/root/.drake_gdb\")" >> /root/.gdbinit
+RUN echo "import drake_gdb" >> /root/.gdbinit
+RUN echo "drake_gdb.register_printers()" >> /root/.gdbinit
+RUN echo "end" >> /root/.gdbinit
+
+
 ## Bring up bash 
 CMD ["bash"]
 
@@ -165,6 +175,7 @@ RUN apt clean
 RUN rm -rf /var/lib/apt/lists/*
 
 ## Config sshd
+
 RUN mkdir /var/run/sshd
 # change password for root to "pwd"
 RUN echo 'root:pwd' | chpasswd
@@ -179,8 +190,11 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 # see https://stackoverflow.com/questions/36292317/why-set-visible-now-in-etc-profile
 ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
-# expose port 22 for ssh server, and 7777 for gdb server
-# RUN sed -i 's/Port 22/Port 7777/' /etc/ssh/sshd_config
+
+# ARG GDB_SSH_PORT 
+# # expose port $GDB_SSH_PORT for ssh server, and 7777 for gdb server
+# RUN sed -i "s/#Port 22/Port $GDB_SSH_PORT/" /etc/ssh/sshd_config
+ENV GDB_SSH_PORT=7777
 
 # create container user $REMOTE_USR and set default shell
 RUN useradd -ms /bin/bash $REMOTE_USR
@@ -201,7 +215,7 @@ USER root
 # i.e. 'ssh remote_usr@localhost -p 7777' will ssh into the container
 # otherwise '-p 127.0.0.1:[localhost_port_number]:7777' is needed when docker run to map ports
 # for this, use 'ssh remote_usr@localhost -p [localhost_port_number]' to remote into container
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+CMD ["/root/startup/entrypoint.sh"]
 
 
 #### REMOTE with VNC ####
@@ -235,15 +249,25 @@ ENV LC_ALL=C.UTF-8 \
     DISPLAY=:0.0 \
     DISPLAY_WIDTH=1024 \
     DISPLAY_HEIGHT=768 \
-    DISPLAY_DEPTh=32
+    DISPLAY_DEPTH=24
 
-RUN echo "export DISPLAY=$DISPLAY" >> /root/.profile
-RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /root/.profile
-RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /root/.profile
-RUN echo "export DISPLAY_DEPTh=$DISPLAY_DEPTh" >> /root/.profile
+# RUN echo "export DISPLAY=$DISPLAY" >> /etc/environment
+# RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /etc/environment
+# RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /etc/environment
+# RUN echo "export DISPLAY_DEPTH=$DISPLAY_DEPTH" >> /etc/environment
+
+# Setup GDB ssh port ENV variables
+# ENV variables will persist in the container without sourcing any profile
+# ARG GDB_SSH_PORT
+
+# RUN echo "GDB_SSH_PORT=$GDB_SSH_PORT" >> /etc/environment
+
+# RUN touch /etc/profile.d/assign_ssh_port.sh
+# RUN echo "export GDB_SSH_PORT=$GDB_SSH_PORT" >> /etc/profile.d/assign_ssh_port.sh
 
 USER root
-CMD ["/root/startup/entrypoint.sh"]
+# ENTRYPOINT /root/startup/entrypoint.sh -p $GDB_SSH_PORT
+ENTRYPOINT ["/root/startup/entrypoint.sh"]
 # EXPOSE 8080
 
 #### REMOTE with ROS ####
@@ -578,7 +602,7 @@ RUN touch /root/install_crocoddyl.sh
 RUN echo " " >> /root/install_crocoddyl.sh
 RUN echo "#!/usr/bin/env bash" >> /root/install_crocoddyl.sh
 RUN echo "cd /root/$DOCKER_WS" >> /root/install_crocoddyl.sh
-RUN echo "git clone https://github.com/loco-3d/crocoddyl.git" >> /root/install_crocoddyl.sh
+RUN echo "git clone https://github.com/bwingo47/crocoddyl.git" >> /root/install_crocoddyl.sh
 RUN echo "cd /root/$DOCKER_WS/crocoddyl" >> /root/install_crocoddyl.sh
 RUN echo "git checkout v1.9.0" >> /root/install_crocoddyl.sh
 RUN echo "git submodule update --init --recursive" >> /root/install_crocoddyl.sh
@@ -612,67 +636,67 @@ RUN apt update --fix-missing \
   && apt-get install -y --no-install-recommends \
     gnome-terminal
 
-## Make and initialize catkin_ws
-RUN mkdir -p /root/catkin_ws/src
+# ## Make and initialize catkin_ws
+# RUN mkdir -p /root/catkin_ws/src
 
-RUN cd /root/catkin_ws &&\
-    catkin init &&\
-    catkin config --extend /opt/ros/$ROS_DISTRO &&\
-    catkin config -DCMAKE_BUILD_TYPE=RelWithDebInfo &&\
-    catkin build
+# RUN cd /root/catkin_ws &&\
+#     catkin init &&\
+#     catkin config --extend /opt/ros/$ROS_DISTRO &&\
+#     catkin config -DCMAKE_BUILD_TYPE=RelWithDebInfo &&\
+#     catkin build
 
-# source catkin_ws setup in $REMOTE_USR .bashrc
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> $home/.bashrc
+# # source catkin_ws setup in $REMOTE_USR .bashrc
+# RUN echo "source /root/catkin_ws/devel/setup.bash" >> $home/.bashrc
 
-# source catkin_ws setup in root .bashrc
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.bashrc
+# # source catkin_ws setup in root .bashrc
+# RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.bashrc
 
-# source catkin_ws setup in root .profile
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.profile
+# # source catkin_ws setup in root .profile
+# RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.profile
 
-# update catkin_ws path variables
-ARG pkg_config_path=/root/catkin_ws/devel/lib/pkgconfig:$PKG_CONFIG_PATH
-ARG ld_library_path=/root/catkin_ws/devel/lib:$LD_LIBRARY_PATH
-ARG pythonpath=/usr/local/lib/python3/dist-packages:$PYTHONPATH
-ARG cmake_prefix_path=/root/catkin_ws/devel:$CMAKE_PREFIX_PATH
+# # update catkin_ws path variables
+# ARG pkg_config_path=/root/catkin_ws/devel/lib/pkgconfig:$PKG_CONFIG_PATH
+# ARG ld_library_path=/root/catkin_ws/devel/lib:$LD_LIBRARY_PATH
+# ARG pythonpath=/usr/local/lib/python3/dist-packages:$PYTHONPATH
+# ARG cmake_prefix_path=/root/catkin_ws/devel:$CMAKE_PREFIX_PATH
 
-ENV PKG_CONFIG_PATH=$pkg_config_path
-ENV LD_LIBRARY_PATH=$ld_library_path
-ENV PYTHONPATH=$pythonpath
-ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
+# ENV PKG_CONFIG_PATH=$pkg_config_path
+# ENV LD_LIBRARY_PATH=$ld_library_path
+# ENV PYTHONPATH=$pythonpath
+# ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
-# RUN echo $PATH
-# RUN echo $PKG_CONFIG_PATH
-# RUN echo $LD_LIBRARY_PATH
-# RUN echo $PYTHONPATH
-# RUN echo $CMAKE_PREFIX_PATH
+# # RUN echo $PATH
+# # RUN echo $PKG_CONFIG_PATH
+# # RUN echo $LD_LIBRARY_PATH
+# # RUN echo $PYTHONPATH
+# # RUN echo $CMAKE_PREFIX_PATH
 
-## Install Raisim
-
-
-## Test install OCS2
-# RUN cd /root/catkin_ws/src &&\
-#     git clone https://github.com/bwingo47/ocs2.git &&\
-#     git clone https://github.com/bwingo47/ocs2_robotic_assets.git &&\
-#     cd .. &&\
-#     catkin build ocs2_robotic_assets &&\
-#     catkin build ocs2_legged_robot_ros
-#     # catkin build ocs2
-
-## Grant $REMOTE_USR root access
-# RUN usermod -aG root $REMOTE_USR
+# ## Install Raisim
 
 
+# ## Test install OCS2
+# # RUN cd /root/catkin_ws/src &&\
+# #     git clone https://github.com/bwingo47/ocs2.git &&\
+# #     git clone https://github.com/bwingo47/ocs2_robotic_assets.git &&\
+# #     cd .. &&\
+# #     catkin build ocs2_robotic_assets &&\
+# #     catkin build ocs2_legged_robot_ros
+# #     # catkin build ocs2
 
-# update docker_ws path variables
-# ARG DOCKER_WS
-# ARG pkg_config_path=/root/$DOCKER_WS/devel/lib/pkgconfig:$PKG_CONFIG_PATH
-# ARG ld_library_path=/root/$DOCKER_WS/devel/lib:$LD_LIBRARY_PATH
-# ARG cmake_prefix_path=/root/$DOCKER_WS/devel:$CMAKE_PREFIX_PATH
+# ## Grant $REMOTE_USR root access
+# # RUN usermod -aG root $REMOTE_USR
 
-ENV PKG_CONFIG_PATH=$pkg_config_path
-ENV LD_LIBRARY_PATH=$ld_library_path
-ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
+
+
+# # update docker_ws path variables
+# # ARG DOCKER_WS
+# # ARG pkg_config_path=/root/$DOCKER_WS/devel/lib/pkgconfig:$PKG_CONFIG_PATH
+# # ARG ld_library_path=/root/$DOCKER_WS/devel/lib:$LD_LIBRARY_PATH
+# # ARG cmake_prefix_path=/root/$DOCKER_WS/devel:$CMAKE_PREFIX_PATH
+
+# ENV PKG_CONFIG_PATH=$pkg_config_path
+# ENV LD_LIBRARY_PATH=$ld_library_path
+# ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
 ## Add all modified path to .profile so CLion can access these path variables
 #  This only works on session restart, need to find better solution
@@ -705,16 +729,6 @@ RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
 
 # source $DOCKER_WS setup in root .profile
 # RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
-
-# configure gpd eigen pretty printers 
-RUN touch /root/.gdbinit
-RUN echo "python" >> /root/.gdbinit
-RUN echo "import sys" >> /root/.gdbinit
-RUN echo "sys.path.insert(0, \"/root/.drake_gdb\")" >> /root/.gdbinit
-RUN echo "import drake_gdb" >> /root/.gdbinit
-RUN echo "drake_gdb.register_printers()" >> /root/.gdbinit
-RUN echo "end" >> /root/.gdbinit
-
 
 
 

@@ -22,6 +22,8 @@ USE_NVIDIA_RUNTIME=true
 LOCALHOSTNAME=localhost
 # Startup folder name 
 STARTUP_FOLDER=startup
+# GDB port
+GDB_SSH_PORT=7777
 
 # If the container is running stop it
 if [ "$( docker container inspect -f '{{.State.Running}}' $CONTAINER_NAME )" == "true" ]; then
@@ -36,6 +38,7 @@ docker build -f $DOCKERFILE_NAME \
   --build-arg NVIDIA_DRIVER_VERSION="$NVIDIA_DRIVER_VERSION" \
   --build-arg SSH_PRV_KEY="$(cat $HOME/.ssh/id_ed25519)" \
   --build-arg SSH_PUB_KEY="$(cat $HOME/.ssh/id_ed25519.pub)" \
+  --build-arg GDB_SSH_PORT=$GDB_SSH_PORT \
   --build-arg CUSTOM_USER=$CUSTOM_USER \
   --build-arg GIT_LOGIN_EMAIL=$GIT_LOGIN_EMAIL \
   --build-arg NUM_MAKE_CORES=$NUM_MAKE_CORES \
@@ -62,7 +65,12 @@ docker run \
       --name $CONTAINER_NAME \
       --hostname $LOCALHOSTNAME \
       --ipc=host \
-      -p 7777:7777 \
+      -e GDB_SSH_PORT=$GDB_SSH_PORT \
+      -e DISPLAY=:0.0 \
+      -e DISPLAY_WIDTH=1435 \
+      -e DISPLAY_HEIGHT=835 \
+      -e DISPLAY_DEPTH=24 \
+      -p $GDB_SSH_PORT:$GDB_SSH_PORT \
       -p 8080:8080 \
       -it \
       --rm \
@@ -79,10 +87,7 @@ if [ "$( docker container inspect -f '{{.State.Status}}' $CONTAINER_NAME )" == "
   sleep 2;
 fi
 
-/bin/bash $PWD/run_ssh.sh 
+/bin/bash $PWD/run_ssh.sh -p $GDB_SSH_PORT
 
 # open http://localhost:8080/vnc.html
 
-# ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[$LOCALHOSTNAME]:7777"
-
-# ssh root@localhost -p 7777

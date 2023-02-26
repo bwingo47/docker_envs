@@ -127,6 +127,15 @@ RUN git config --system user.email "$GIT_LOGIN_EMAIL"
 # RUN umask u=rwx,g=rwx,o=rwx
 RUN echo "umask u=rwx,g=rwx,o=rwx" >> /root/.profile
 
+# configure gpd eigen pretty printers 
+RUN touch /root/.gdbinit
+RUN echo "python" >> /root/.gdbinit
+RUN echo "import sys" >> /root/.gdbinit
+RUN echo "sys.path.insert(0, \"/root/.drake_gdb\")" >> /root/.gdbinit
+RUN echo "import drake_gdb" >> /root/.gdbinit
+RUN echo "drake_gdb.register_printers()" >> /root/.gdbinit
+RUN echo "end" >> /root/.gdbinit
+
 ## Bring up bash 
 CMD ["bash"]
 
@@ -179,8 +188,10 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 # see https://stackoverflow.com/questions/36292317/why-set-visible-now-in-etc-profile
 ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
-# expose port 22 for ssh server, and 7777 for gdb server
-# RUN sed -i 's/Port 22/Port 7777/' /etc/ssh/sshd_config
+
+# expose port $GDB_SSH_PORT for ssh server, and 7777 for gdb server
+ENV GDB_SSH_PORT=7777
+# RUN sed -i "s/#Port 22/Port $GDB_SSH_PORT/" /etc/ssh/sshd_config
 
 # create container user $REMOTE_USR and set default shell
 RUN useradd -ms /bin/bash $REMOTE_USR
@@ -235,12 +246,23 @@ ENV LC_ALL=C.UTF-8 \
     DISPLAY=:0.0 \
     DISPLAY_WIDTH=1024 \
     DISPLAY_HEIGHT=768 \
-    DISPLAY_DEPTh=32
+    DISPLAY_DEPTH=24
 
-RUN echo "export DISPLAY=$DISPLAY" >> /root/.profile
-RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /root/.profile
-RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /root/.profile
-RUN echo "export DISPLAY_DEPTh=$DISPLAY_DEPTh" >> /root/.profile
+# RUN echo "export DISPLAY=$DISPLAY" >> /root/.profile
+# RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /root/.profile
+# RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /root/.profile
+# RUN echo "export DISPLAY_DEPTH=$DISPLAY_DEPTH" >> /root/.profile
+
+
+# Setup GDB ssh port ENV variables
+# ENV variables will persist in the container without sourcing any profile
+# ARG GDB_SSH_PORT
+
+# ENV GDB_SSH_PORT=$GDB_SSH_PORT
+# RUN echo "GDB_SSH_PORT=$GDB_SSH_PORT" >> /etc/profile
+# RUN echo "GDB_SSH_PORT=$GDB_SSH_PORT" >> /root/.profile
+# RUN echo "GDB_SSH_PORT=$GDB_SSH_PORT" >> /etc/environment
+
 
 USER root
 CMD ["/root/startup/entrypoint.sh"]
@@ -710,14 +732,7 @@ RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc
 # source $DOCKER_WS setup in root .profile
 RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
 
-# configure gpd eigen pretty printers 
-RUN touch /root/.gdbinit
-RUN echo "python" >> /root/.gdbinit
-RUN echo "import sys" >> /root/.gdbinit
-RUN echo "sys.path.insert(0, \"/root/.drake_gdb\")" >> /root/.gdbinit
-RUN echo "import drake_gdb" >> /root/.gdbinit
-RUN echo "drake_gdb.register_printers()" >> /root/.gdbinit
-RUN echo "end" >> /root/.gdbinit
+
 
 
 

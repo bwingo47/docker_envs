@@ -247,7 +247,7 @@ ENV LC_ALL=C.UTF-8 \
     DISPLAY=:0.0 \
     DISPLAY_WIDTH=1024 \
     DISPLAY_HEIGHT=768 \
-    DISPLAY_DEPTh=32
+    DISPLAY_DEPTh=24
 
 RUN echo "export DISPLAY=$DISPLAY" >> /root/.profile
 RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /root/.profile
