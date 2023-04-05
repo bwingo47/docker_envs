@@ -12,6 +12,7 @@ DOCKERFILE_NAME=ocs2.dockerfile
 DOCKERFILE_BUILD_STAGE=REMOTE_ROS_OCS2
 # Specify docker workspace folder name to be mounted 
 DOCKER_WS=docker_ws
+DOCKER_WS_1=docker_ws_digit_sim
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
 # Specify the number of CPU cores to run cmake
@@ -164,6 +165,7 @@ then
           -v $XSOCK:$XSOCK:rw \
           -v $XAUTH:$XAUTH \
           -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
+          -v $HOME/$DOCKER_WS_1:/root/$DOCKER_WS_1 \
           -v $HOME/.ssh:/root/.ssh \
           -v $HOME/.drake_gdb:/root/.drake_gdb \
           --gpus all \
@@ -188,6 +190,7 @@ then
           -v $XSOCK:$XSOCK:rw \
           -v $XAUTH:$XAUTH \
           -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
+          -v $HOME/$DOCKER_WS_1:/root/$DOCKER_WS_1 \
           -v $HOME/.ssh:/root/.ssh \
           -v $HOME/.drake_gdb:/root/.drake_gdb \
           --privileged \
@@ -212,6 +215,7 @@ else
         -v $XSOCK:$XSOCK:rw \
         -v $XAUTH:$XAUTH \
         -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
+        -v $HOME/$DOCKER_WS_1:/root/$DOCKER_WS_1 \
         -v $HOME/.ssh:/root/.ssh \
         -v $HOME/.drake_gdb:/root/.drake_gdb \
         --privileged \
