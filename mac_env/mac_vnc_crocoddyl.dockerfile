@@ -249,12 +249,15 @@ ENV LC_ALL=C.UTF-8 \
     DISPLAY=:0.0 \
     DISPLAY_WIDTH=1024 \
     DISPLAY_HEIGHT=768 \
-    DISPLAY_DEPTH=24
+    DISPLAY_DEPTH=24 \
+    X11_WEBSOCKET_PORT=8080
 
-# RUN echo "export DISPLAY=$DISPLAY" >> /etc/environment
-# RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /etc/environment
-# RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /etc/environment
-# RUN echo "export DISPLAY_DEPTH=$DISPLAY_DEPTH" >> /etc/environment
+RUN echo "export DISPLAY=$DISPLAY" >> /etc/environment
+RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /etc/environment
+RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /etc/environment
+RUN echo "export DISPLAY_DEPTH=$DISPLAY_DEPTH" >> /etc/environment
+RUN echo "export X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT" >> /etc/environment
+
 
 # Setup GDB ssh port ENV variables
 # ENV variables will persist in the container without sourcing any profile

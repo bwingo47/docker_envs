@@ -136,6 +136,7 @@ RUN echo "import drake_gdb" >> /root/.gdbinit
 RUN echo "drake_gdb.register_printers()" >> /root/.gdbinit
 RUN echo "end" >> /root/.gdbinit
 
+
 ## Bring up bash 
 CMD ["bash"]
 
@@ -174,6 +175,7 @@ RUN apt clean
 RUN rm -rf /var/lib/apt/lists/*
 
 ## Config sshd
+
 RUN mkdir /var/run/sshd
 # change password for root to "pwd"
 RUN echo 'root:pwd' | chpasswd
@@ -189,9 +191,10 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
 
-# expose port $GDB_SSH_PORT for ssh server, and 7777 for gdb server
-ENV GDB_SSH_PORT=7777
+# ARG GDB_SSH_PORT 
+# # expose port $GDB_SSH_PORT for ssh server, and 7777 for gdb server
 # RUN sed -i "s/#Port 22/Port $GDB_SSH_PORT/" /etc/ssh/sshd_config
+ENV GDB_SSH_PORT=7777
 
 # create container user $REMOTE_USR and set default shell
 RUN useradd -ms /bin/bash $REMOTE_USR
@@ -212,7 +215,7 @@ USER root
 # i.e. 'ssh remote_usr@localhost -p 7777' will ssh into the container
 # otherwise '-p 127.0.0.1:[localhost_port_number]:7777' is needed when docker run to map ports
 # for this, use 'ssh remote_usr@localhost -p [localhost_port_number]' to remote into container
-CMD ["/usr/sbin/sshd", "-D", "-p", "7777"]
+CMD ["/root/startup/entrypoint.sh"]
 
 
 #### REMOTE with VNC ####
@@ -256,19 +259,18 @@ RUN echo "export DISPLAY_DEPTH=$DISPLAY_DEPTH" >> /etc/environment
 RUN echo "export X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT" >> /etc/environment
 
 
-
 # Setup GDB ssh port ENV variables
 # ENV variables will persist in the container without sourcing any profile
 # ARG GDB_SSH_PORT
 
-# ENV GDB_SSH_PORT=$GDB_SSH_PORT
-# RUN echo "GDB_SSH_PORT=$GDB_SSH_PORT" >> /etc/profile
-# RUN echo "GDB_SSH_PORT=$GDB_SSH_PORT" >> /root/.profile
 # RUN echo "GDB_SSH_PORT=$GDB_SSH_PORT" >> /etc/environment
 
+# RUN touch /etc/profile.d/assign_ssh_port.sh
+# RUN echo "export GDB_SSH_PORT=$GDB_SSH_PORT" >> /etc/profile.d/assign_ssh_port.sh
 
 USER root
-CMD ["/root/startup/entrypoint.sh"]
+# ENTRYPOINT /root/startup/entrypoint.sh -p $GDB_SSH_PORT
+ENTRYPOINT ["/root/startup/entrypoint.sh"]
 # EXPOSE 8080
 
 #### REMOTE with ROS ####
@@ -503,7 +505,7 @@ ENTRYPOINT ["/root/startup/entrypoint.sh"]
 
 
 #### REMOTE with ROS and OCS2 and full dependencies ####
-FROM remote_ros_solvers AS remote_ros_gepetto
+FROM remote_ros_solvers AS remote_ros_pinocchio
 LABEL maintainer="Bruce Wingo" \
       description="Upgrades the remote ROS environment to have Gepetto team packages" \
       version="0.0.1"
@@ -532,50 +534,27 @@ RUN apt update --fix-missing \
      ros-$ROS_DISTRO-rqt-multiplot \
      ros-$ROS_DISTRO-grid-map-msgs
 
-## Install robotpkg binaries 
-# install binaries from robotpkg
-# RUN sh -c "echo 'deb [arch=amd64] http://robotpkg.openrobots.org/packages/debian/pub \
-#  $(lsb_release -cs) robotpkg' >> /etc/apt/sources.list.d/robotpkg.list"
-# RUN curl http://robotpkg.openrobots.org/packages/debian/robotpkg.key | apt-key add -
-# RUN apt-get update \
-#   && apt-get install -y --no-install-recommends \
-#      robotpkg-py38-eigenpy
-#     #  robotpkg-hpp-fcl
 
 ## Install eigenpy from source 
 RUN cd /root &&\
-    git clone --recursive https://github.com/bwingo47/eigenpy.git
-    # git clone --recursive https://github.com/stack-of-tasks/eigenpy.git
+    git clone https://github.com/stack-of-tasks/eigenpy.git
 
 RUN cd /root/eigenpy &&\
-    # git checkout f53d37e0f732361f338769b730a129e2da9b6a46 &&\
-    git checkout master &&\
+    git checkout v2.7.11 &&\
+    git submodule update --init --recursive &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
     make &&\
     make install
 
-# ARG path=/usr/local/bin:$PATH
-# ARG pkg_config_path=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
-# ARG ld_library_path=/usr/local/lib:$LD_LIBRARY_PATH
-# ARG pythonpath=/usr/local/lib/python3.8/dist-packages:$PYTHONPATH
-# ARG cmake_prefix_path=/usr/local:$CMAKE_PREFIX_PATH
-
-# ENV PATH=$path
-# ENV PKG_CONFIG_PATH=$pkg_config_path
-# ENV LD_LIBRARY_PATH=$ld_library_path
-# ENV PYTHONPATH=$pythonpath
-# ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
-
 ## Install hpp-fcl from source
 RUN cd /root &&\
-    git clone --recursive https://github.com/bwingo47/hpp-fcl.git
-    # git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git 
+    git clone https://github.com/humanoid-path-planner/hpp-fcl.git 
 
 RUN cd /root/hpp-fcl &&\
-    # git checkout c8373f933ec0fe9fbded6f8d1235f6fc08845ada &&\
-    git checkout devel &&\
+    git checkout v2.2.0 &&\
+    git submodule update --init --recursive &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
@@ -585,39 +564,46 @@ RUN cd /root/hpp-fcl &&\
 
 ## Install pinocchio from source
 RUN cd /root &&\ 
-    git clone --recursive https://github.com/bwingo47/pinocchio.git
-    # git clone --recursive https://github.com/stack-of-tasks/pinocchio
+    git clone https://github.com/stack-of-tasks/pinocchio.git
 
 
 # must using turn on BUILD_WITH_COLLISION_SUPPORT option during cmake .. 
 # otherwise ocs2_pinocchio (specifically ocs2_self_collision) won't build
 RUN cd /root/pinocchio &&\
-    # git checkout 5c93f4e043886ec43659a10a79701263a1e8fa18 &&\
-    git checkout master &&\
+    git checkout v2.6.17 &&\
+    git submodule update --init --recursive &&\
     mkdir build &&\
     cd build &&\
     cmake .. -D CMAKE_BUILD_TYPE=Release \
              -D CMAKE_INSTALL_PREFIX=/usr/local \
+             -D BUILD_WITH_URDF_SUPPORT=ON \
              -D BUILD_WITH_COLLISION_SUPPORT=ON \
              -D BUILD_WITH_CASADI_SUPPORT=ON \
              -D BUILD_WITH_AUTODIFF_SUPPORT=ON \
-             -D BUILD_WITH_CODEGEN_SUPPORT=ON \
              -D BUILD_WITH_OPENMP_SUPPORT=ON &&\
     make &&\
     make install
 
-# RUN mv /usr/lib/aarch64-linux-gnu/libOpenGL.so.0.0.0 /usr/lib/aarch64-linux-gnu/libOpenGL.so.0.0.0.orig &&\
-#     ln -s /usr/lib/aarch64-linux-gnu/libGL.so.1 /usr/lib/aarch64-linux-gnu/libOpenGL.so.0.0.0
 
-# RUN apt-get update \
-#   && apt-get install -y --no-install-recommends \
-#      libgl1-mesa-glx \
-#      firefox
 
-# # 
-# RUN echo "LIBGL_ALWAYS_INDIRECT=1" >> $home/.bashrc
-# RUN echo "LIBGL_ALWAYS_INDIRECT=1" >> /root/.bashrc
-# RUN echo "LIBGL_ALWAYS_INDIRECT=1" >> /root/.profile
+## Write Pinocchio install script to container
+ARG DOCKER_WS
+
+RUN touch /root/install_pinocchio.sh
+RUN echo " " >> /root/install_pinocchio.sh
+RUN echo "#!/usr/bin/env bash" >> /root/install_pinocchio.sh
+RUN echo "cd /root/$DOCKER_WS" >> /root/install_pinocchio.sh
+RUN echo "git clone https://github.com/bwingo47/pinocchio.git" >> /root/install_pinocchio.sh
+RUN echo "cd /root/$DOCKER_WS/pinocchio" >> /root/install_pinocchio.sh
+RUN echo "git checkout v2.6.17" >> /root/install_pinocchio.sh
+RUN echo "git submodule update --init --recursive" >> /root/install_pinocchio.sh
+RUN echo "mkdir build && cd build" >> /root/install_pinocchio.sh
+RUN echo "cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr/local -D BUILD_WITH_URDF_SUPPORT=ON -D BUILD_WITH_COLLISION_SUPPORT=ON -D BUILD_WITH_CASADI_SUPPORT=ON -D BUILD_WITH_AUTODIFF_SUPPORT=ON -D BUILD_WITH_OPENMP_SUPPORT=ON" >> /root/install_pinocchio.sh
+RUN echo "make" >> /root/install_pinocchio.sh
+RUN echo "make install" >> /root/install_pinocchio.sh
+RUN echo " " >> /root/install_pinocchio.sh
+
+RUN chmod +x /root/install_pinocchio.sh
 
 
 USER root
@@ -626,7 +612,7 @@ ENTRYPOINT ["/root/startup/entrypoint.sh"]
 
 
 #### REMOTE with ROS and OCS2 and full dependencies ####
-FROM remote_ros_gepetto AS remote_ros_ocs2
+FROM remote_ros_pinocchio AS remote_pinocchio_dev
 LABEL maintainer="Bruce Wingo" \
       description="Upgrades the remote ROS Gepetto environment to have full OCS2" \
       version="0.0.1"
@@ -641,77 +627,67 @@ RUN apt update --fix-missing \
   && apt-get install -y --no-install-recommends \
     gnome-terminal
 
-## Make and initialize catkin_ws
-RUN mkdir -p /root/catkin_ws/src
+# ## Make and initialize catkin_ws
+# RUN mkdir -p /root/catkin_ws/src
 
-RUN cd /root/catkin_ws &&\
-    catkin init &&\
-    catkin config --extend /opt/ros/$ROS_DISTRO &&\
-    catkin config -DCMAKE_BUILD_TYPE=RelWithDebInfo &&\
-    catkin build
+# RUN cd /root/catkin_ws &&\
+#     catkin init &&\
+#     catkin config --extend /opt/ros/$ROS_DISTRO &&\
+#     catkin config -DCMAKE_BUILD_TYPE=RelWithDebInfo &&\
+#     catkin build
 
-# source catkin_ws setup in $REMOTE_USR .bashrc
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> $home/.bashrc
+# # source catkin_ws setup in $REMOTE_USR .bashrc
+# RUN echo "source /root/catkin_ws/devel/setup.bash" >> $home/.bashrc
 
-# source catkin_ws setup in root .bashrc
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.bashrc
+# # source catkin_ws setup in root .bashrc
+# RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.bashrc
 
-# source catkin_ws setup in root .profile
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.profile
+# # source catkin_ws setup in root .profile
+# RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.profile
 
-# update catkin_ws path variables
-ARG pkg_config_path=/root/catkin_ws/devel/lib/pkgconfig:$PKG_CONFIG_PATH
-ARG ld_library_path=/root/catkin_ws/devel/lib:$LD_LIBRARY_PATH
-ARG pythonpath=/usr/local/lib/python3/dist-packages:$PYTHONPATH
-ARG cmake_prefix_path=/root/catkin_ws/devel:$CMAKE_PREFIX_PATH
+# # update catkin_ws path variables
+# ARG pkg_config_path=/root/catkin_ws/devel/lib/pkgconfig:$PKG_CONFIG_PATH
+# ARG ld_library_path=/root/catkin_ws/devel/lib:$LD_LIBRARY_PATH
+# ARG pythonpath=/usr/local/lib/python3/dist-packages:$PYTHONPATH
+# ARG cmake_prefix_path=/root/catkin_ws/devel:$CMAKE_PREFIX_PATH
 
-ENV PKG_CONFIG_PATH=$pkg_config_path
-ENV LD_LIBRARY_PATH=$ld_library_path
-ENV PYTHONPATH=$pythonpath
-ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
+# ENV PKG_CONFIG_PATH=$pkg_config_path
+# ENV LD_LIBRARY_PATH=$ld_library_path
+# ENV PYTHONPATH=$pythonpath
+# ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
-# RUN echo $PATH
-# RUN echo $PKG_CONFIG_PATH
-# RUN echo $LD_LIBRARY_PATH
-# RUN echo $PYTHONPATH
-# RUN echo $CMAKE_PREFIX_PATH
+# # RUN echo $PATH
+# # RUN echo $PKG_CONFIG_PATH
+# # RUN echo $LD_LIBRARY_PATH
+# # RUN echo $PYTHONPATH
+# # RUN echo $CMAKE_PREFIX_PATH
 
-## Install Raisim
-
-
-## Test install OCS2
-# RUN cd /root/catkin_ws/src &&\
-#     git clone https://github.com/bwingo47/ocs2.git &&\
-#     git clone https://github.com/bwingo47/ocs2_robotic_assets.git &&\
-#     cd .. &&\
-#     catkin build ocs2_robotic_assets &&\
-#     catkin build ocs2_legged_robot_ros
-#     # catkin build ocs2
-
-## Grant $REMOTE_USR root access
-# RUN usermod -aG root $REMOTE_USR
+# ## Install Raisim
 
 
+# ## Test install OCS2
+# # RUN cd /root/catkin_ws/src &&\
+# #     git clone https://github.com/bwingo47/ocs2.git &&\
+# #     git clone https://github.com/bwingo47/ocs2_robotic_assets.git &&\
+# #     cd .. &&\
+# #     catkin build ocs2_robotic_assets &&\
+# #     catkin build ocs2_legged_robot_ros
+# #     # catkin build ocs2
 
-# update docker_ws path variables
-ARG DOCKER_WS
-ARG pkg_config_path=/root/$DOCKER_WS/devel/lib/pkgconfig:$PKG_CONFIG_PATH
-ARG ld_library_path=/root/$DOCKER_WS/devel/lib:$LD_LIBRARY_PATH
-ARG cmake_prefix_path=/root/$DOCKER_WS/devel:$CMAKE_PREFIX_PATH
+# ## Grant $REMOTE_USR root access
+# # RUN usermod -aG root $REMOTE_USR
 
-ENV PKG_CONFIG_PATH=$pkg_config_path
-ENV LD_LIBRARY_PATH=$ld_library_path
-ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
-# update docker_ws_1 path variables
-ARG DOCKER_WS_1
-ARG pkg_config_path=/root/$DOCKER_WS_1/devel/lib/pkgconfig:$PKG_CONFIG_PATH
-ARG ld_library_path=/root/$DOCKER_WS_1/devel/lib:$LD_LIBRARY_PATH
-ARG cmake_prefix_path=/root/$DOCKER_WS_1/devel:$CMAKE_PREFIX_PATH
 
-ENV PKG_CONFIG_PATH=$pkg_config_path
-ENV LD_LIBRARY_PATH=$ld_library_path
-ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
+# # update docker_ws path variables
+# # ARG DOCKER_WS
+# # ARG pkg_config_path=/root/$DOCKER_WS/devel/lib/pkgconfig:$PKG_CONFIG_PATH
+# # ARG ld_library_path=/root/$DOCKER_WS/devel/lib:$LD_LIBRARY_PATH
+# # ARG cmake_prefix_path=/root/$DOCKER_WS/devel:$CMAKE_PREFIX_PATH
+
+# ENV PKG_CONFIG_PATH=$pkg_config_path
+# ENV LD_LIBRARY_PATH=$ld_library_path
+# ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 
 ## Add all modified path to .profile so CLion can access these path variables
 #  This only works on session restart, need to find better solution
@@ -737,27 +713,13 @@ RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
 RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
 
 # source $DOCKER_WS setup in $REMOTE_USR .bashrc
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> $home/.bashrc
+# RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> $home/.bashrc
 
 # source $DOCKER_WS setup in root .bashrc
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc
+# RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc
 
 # source $DOCKER_WS setup in root .profile
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
-
-
-# source $DOCKER_WS setup in $REMOTE_USR .bashrc
-RUN echo "source /root/$DOCKER_WS_1/devel/setup.bash" >> $home/.bashrc
-
-# source $DOCKER_WS setup in root .bashrc
-RUN echo "source /root/$DOCKER_WS_1/devel/setup.bash" >> /root/.bashrc
-
-# source $DOCKER_WS setup in root .profile
-RUN echo "source /root/$DOCKER_WS_1/devel/setup.bash" >> /root/.profile
-
-
-
-
+# RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
 
 
 

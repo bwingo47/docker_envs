@@ -9,7 +9,7 @@ IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
 DOCKERFILE_NAME=mac_vnc_crocoddyl.dockerfile
 # Specify build stage name for multi-target dockerfile
-DOCKERFILE_BUILD_STAGE=remote_crocoddyl_dev
+DOCKERFILE_BUILD_STAGE=remote_vnc
 # Specify docker workspace folder name to be mounted 
 DOCKER_WS=docker_crocoddyl_ws
 # Specify github login name
@@ -24,6 +24,8 @@ LOCALHOSTNAME=localhost
 STARTUP_FOLDER=startup
 # GDB port
 GDB_SSH_PORT=7779
+# X11 websocket port
+X11_WEBSOCKET_PORT=8080
 
 # If the container is running stop it
 if [ "$( docker container inspect -f '{{.State.Running}}' $CONTAINER_NAME )" == "true" ]; then
@@ -66,12 +68,13 @@ docker run \
       --hostname $LOCALHOSTNAME \
       --ipc=host \
       -e GDB_SSH_PORT=$GDB_SSH_PORT \
+      -e X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT \
       -e DISPLAY=:0.0 \
       -e DISPLAY_WIDTH=1435 \
       -e DISPLAY_HEIGHT=835 \
       -e DISPLAY_DEPTH=24 \
       -p $GDB_SSH_PORT:$GDB_SSH_PORT \
-      -p 8080:8080 \
+      -p $X11_WEBSOCKET_PORT:$X11_WEBSOCKET_PORT \
       -it \
       --rm \
       -v $PWD/$STARTUP_FOLDER:/root/$STARTUP_FOLDER \
@@ -83,7 +86,7 @@ docker run \
       $IMAGE_NAME 
 
 if [ "$( docker container inspect -f '{{.State.Status}}' $CONTAINER_NAME )" == "running" ]; then
-  echo "Container is up"
+  echo "Container is up";
   sleep 2;
 fi
 

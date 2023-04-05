@@ -103,11 +103,7 @@ RUN pip3 install \
     numpy==1.20 \
     pandas \
     pybind11 \
-    scipy \
-    tensorflow \
-    torch \
-    torchaudio \
-    torchvision
+    scipy 
 # Install what you want (remember the ' \')
 
 ## Clean up
@@ -191,8 +187,10 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 # see https://stackoverflow.com/questions/36292317/why-set-visible-now-in-etc-profile
 ENV NOTVISIBLE "in users profile"
 RUN echo "export VISIBLE=now" >> /etc/profile
-# expose port 22 for ssh server, and 7777 for gdb server
-# RUN sed -i 's/Port 22/Port 7777/' /etc/ssh/sshd_config
+
+# expose port $GDB_SSH_PORT for ssh server, and 7777 for gdb server
+ENV GDB_SSH_PORT=7777
+# RUN sed -i "s/#Port 22/Port $GDB_SSH_PORT/" /etc/ssh/sshd_config
 
 # create container user $REMOTE_USR and set default shell
 RUN useradd -ms /bin/bash $REMOTE_USR
@@ -247,12 +245,14 @@ ENV LC_ALL=C.UTF-8 \
     DISPLAY=:0.0 \
     DISPLAY_WIDTH=1024 \
     DISPLAY_HEIGHT=768 \
-    DISPLAY_DEPTh=24
+    DISPLAY_DEPTh=24 \
+    X11_WEBSOCKET_PORT=8080
 
-RUN echo "export DISPLAY=$DISPLAY" >> /root/.profile
-RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /root/.profile
-RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /root/.profile
-RUN echo "export DISPLAY_DEPTh=$DISPLAY_DEPTh" >> /root/.profile
+RUN echo "export DISPLAY=$DISPLAY" >> /etc/environment
+RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /etc/environment
+RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /etc/environment
+RUN echo "export DISPLAY_DEPTh=$DISPLAY_DEPTh" >> /etc/environment
+RUN echo "export X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT" >> /etc/environment
 
 USER root
 CMD ["/root/startup/entrypoint.sh"]

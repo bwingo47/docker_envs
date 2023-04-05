@@ -12,6 +12,10 @@ DOCKERFILE_NAME=mac_vnc.dockerfile
 DOCKERFILE_BUILD_STAGE=remote_ros_ocs2
 # Specify docker workspace folder name to be mounted 
 DOCKER_WS=docker_arm64_ws
+# Specify docker workspace folder name to be mounted 
+DOCKER_WS_1=docker_legged_mpc_ws
+# Specify additional docker workspace folder name to be mounted 
+# DOCKER_WS_2=docker_digit_util_ws
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
 # Specify the number of CPU cores to run cmake
@@ -24,6 +28,9 @@ LOCALHOSTNAME=localhost
 STARTUP_FOLDER=startup
 # GDB port
 GDB_SSH_PORT=7777
+# X11 websocket port
+X11_WEBSOCKET_PORT=8083
+
 
 # If the container is running stop it
 if [ "$( docker container inspect -f '{{.State.Running}}' $CONTAINER_NAME )" == "true" ]; then
@@ -43,6 +50,7 @@ docker build -f $DOCKERFILE_NAME \
   --build-arg GIT_LOGIN_EMAIL=$GIT_LOGIN_EMAIL \
   --build-arg NUM_MAKE_CORES=$NUM_MAKE_CORES \
   --build-arg DOCKER_WS=$DOCKER_WS \
+  --build-arg DOCKER_WS_1=$DOCKER_WS_1 \
   --build-arg STARTUP_FOLDER=$STARTUP_FOLDER \
   --target $DOCKERFILE_BUILD_STAGE \
   -t $IMAGE_NAME . || { echo "Build docker failed"; exit 1; }
@@ -66,16 +74,18 @@ docker run \
       --hostname $LOCALHOSTNAME \
       --ipc=host \
       -e GDB_SSH_PORT=$GDB_SSH_PORT \
+      -e X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT \
       -e DISPLAY=:0.0 \
-      -e DISPLAY_WIDTH=1435 \
-      -e DISPLAY_HEIGHT=835 \
+      -e DISPLAY_WIDTH=1335 \
+      -e DISPLAY_HEIGHT=735 \
       -e DISPLAY_DEPTH=24 \
       -p $GDB_SSH_PORT:$GDB_SSH_PORT \
-      -p 8080:8080 \
+      -p $X11_WEBSOCKET_PORT:$X11_WEBSOCKET_PORT \
       -it \
       --rm \
       -v $PWD/$STARTUP_FOLDER:/root/$STARTUP_FOLDER \
       -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
+      -v $HOME/$DOCKER_WS_1:/root/$DOCKER_WS_1 \
       -v $HOME/.ssh:/root/.ssh \
       -v $HOME/.drake_gdb:/root/.drake_gdb \
       --privileged \
@@ -83,7 +93,7 @@ docker run \
       $IMAGE_NAME 
 
 if [ "$( docker container inspect -f '{{.State.Status}}' $CONTAINER_NAME )" == "running" ]; then
-  echo "Container is up"
+  echo "Container is up";
   sleep 2;
 fi
 

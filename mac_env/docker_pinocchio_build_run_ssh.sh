@@ -3,17 +3,15 @@
 # Specify docke user name
 DOCKER_USR=bwingo47
 # Specify name of container
-CONTAINER_NAME=mac-amd64-container
+CONTAINER_NAME=mac-pinocchio-container
 # Specify name of image (repository)
 IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
-DOCKERFILE_NAME=mac_amd64.dockerfile
+DOCKERFILE_NAME=mac_vnc_pinocchio.dockerfile
 # Specify build stage name for multi-target dockerfile
-DOCKERFILE_BUILD_STAGE=remote_vnc
+DOCKERFILE_BUILD_STAGE=remote_pinocchio_dev
 # Specify docker workspace folder name to be mounted 
-DOCKER_WS=docker_ws
-# Specify additional docker workspace folder name to be mounted 
-DOCKER_WS_1=docker_digit_util_ws
+DOCKER_WS=docker_pinocchio_ws
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
 # Specify the number of CPU cores to run cmake
@@ -25,9 +23,9 @@ LOCALHOSTNAME=localhost
 # Startup folder name 
 STARTUP_FOLDER=startup
 # GDB port
-GDB_SSH_PORT=7775
+GDB_SSH_PORT=7780
 # X11 websocket port
-X11_WEBSOCKET_PORT=8085
+X11_WEBSOCKET_PORT=8084
 
 # If the container is running stop it
 if [ "$( docker container inspect -f '{{.State.Running}}' $CONTAINER_NAME )" == "true" ]; then
@@ -38,11 +36,11 @@ fi
 CUSTOM_USER=remote_usr
 
 echo "Building docker image"
-docker buildx build -f $DOCKERFILE_NAME \
-  --platform linux/amd64 \
+docker build -f $DOCKERFILE_NAME \
   --build-arg NVIDIA_DRIVER_VERSION="$NVIDIA_DRIVER_VERSION" \
   --build-arg SSH_PRV_KEY="$(cat $HOME/.ssh/id_ed25519)" \
   --build-arg SSH_PUB_KEY="$(cat $HOME/.ssh/id_ed25519.pub)" \
+  --build-arg GDB_SSH_PORT=$GDB_SSH_PORT \
   --build-arg CUSTOM_USER=$CUSTOM_USER \
   --build-arg GIT_LOGIN_EMAIL=$GIT_LOGIN_EMAIL \
   --build-arg NUM_MAKE_CORES=$NUM_MAKE_CORES \
@@ -66,15 +64,14 @@ echo "Container spinning up"
 
 docker run \
       -d \
-      --platform linux/amd64 \
       --name $CONTAINER_NAME \
       --hostname $LOCALHOSTNAME \
       --ipc=host \
       -e GDB_SSH_PORT=$GDB_SSH_PORT \
       -e X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT \
       -e DISPLAY=:0.0 \
-      -e DISPLAY_WIDTH=1335 \
-      -e DISPLAY_HEIGHT=735 \
+      -e DISPLAY_WIDTH=1435 \
+      -e DISPLAY_HEIGHT=835 \
       -e DISPLAY_DEPTH=24 \
       -p $GDB_SSH_PORT:$GDB_SSH_PORT \
       -p $X11_WEBSOCKET_PORT:$X11_WEBSOCKET_PORT \
@@ -82,7 +79,6 @@ docker run \
       --rm \
       -v $PWD/$STARTUP_FOLDER:/root/$STARTUP_FOLDER \
       -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
-      -v $HOME/$DOCKER_WS_1:/root/$DOCKER_WS_1 \
       -v $HOME/.ssh:/root/.ssh \
       -v $HOME/.drake_gdb:/root/.drake_gdb \
       --privileged \
@@ -96,8 +92,4 @@ fi
 
 /bin/bash $PWD/run_ssh.sh -p $GDB_SSH_PORT
 
-# open http://localhost:8085/vnc.html
-
-# ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[$LOCALHOSTNAME]:7775"
-
-# ssh root@localhost -p 7775
+# open http://localhost:8080/vnc.html
