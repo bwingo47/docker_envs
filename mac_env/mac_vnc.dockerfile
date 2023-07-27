@@ -11,6 +11,8 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 ENV DEBIAN_FRONTEND noninteractive
 
+ARG NUM_MAKE_CORES
+
 RUN apt update --fix-missing \
   && apt-get install -y --no-install-recommends \
     apt-utils \
@@ -68,16 +70,16 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 3
 # RUN update-alternatives --install /usr/bin/python python /usr/bin/python2 2
 
 ## Setup alternatives C++
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
-RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9
-RUN update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-10 10
-RUN update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-10 10
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9 &&\
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9 &&\
+    update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-10 10 &&\
+    update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-10 10
 
 # C++ 20
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 10
-RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 10
-RUN update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-12 12
-RUN update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-12 12
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 10 &&\
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 10 &&\
+    update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-12 12 &&\
+    update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-12 12
 
 ## Install pip packages
 RUN pip3 install \
@@ -99,23 +101,58 @@ RUN pip3 install \
 # Install what you want (remember the ' \')
 
 ## Clean up
-RUN apt autoclean
-RUN apt autoremove
-RUN apt clean
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt autoclean &&\
+    apt autoremove &&\
+    apt clean &&\
+    rm -rf /var/lib/apt/lists/*
 
 ## Fix eigen
 RUN ln -s /usr/include/eigen3/Eigen /usr/include/Eigen
 
 ## Install Google Test
+RUN git clone https://github.com/google/googletest.git &&\
+    cd googletest && git checkout release-1.12.1 &&\
+    cd .. && mkdir -p googletest/build &&\
+    cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_GMOCK=ON  -DINSTALL_GTEST=ON -S googletest -B googletest/build &&\
+    cmake --build googletest/build --parallel ${NUM_MAKE_CORES} &&\
+    cmake --install googletest/build &&\
+    rm -rf googletest
 
 ## Install Google Benchmark
+RUN git clone https://github.com/google/benchmark.git &&\
+    cd benchmark && git checkout v1.7.1 &&\
+    cd .. && mkdir -p benchmark/build &&\
+    cmake  -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_TESTING=OFF -S benchmark -B benchmark/build &&\
+    cmake --build benchmark/build  --parallel ${NUM_MAKE_CORES} &&\
+    cmake --install benchmark/build &&\
+    rm -rf benchmark
 
 ## Install nlohmann json 
+RUN git clone https://github.com/nlohmann/json.git &&\
+    cd json && git checkout v3.11.2 &&\
+    cd .. && mkdir -p json/build &&\
+    cmake -DCMAKE_BUILD_TYPE=Release -DJSON_BuildTests=OFF -S json -B json/build &&\
+    cmake --build json/build --parallel ${NUM_MAKE_CORES} &&\
+    cmake --install json/build &&\
+    rm -rf json
 
 ## Install {fmt}
+RUN git clone https://github.com/fmtlib/fmt.git &&\
+    cd fmt && git checkout 9.1.0 &&\
+    cd .. && mkdir -p fmt/build &&\
+    cmake -DCMAKE_BUILD_TYPE=Release -DFMT_DOC=OFF -DFMT_TEST=OFF -S fmt -B fmt/build &&\
+    cmake --build fmt/build --parallel ${NUM_MAKE_CORES} &&\
+    cmake --install fmt/build &&\
+    rm -rf fmt
 
 ## Install spdlog
+RUN git clone https://github.com/gabime/spdlog.git &&\
+    cd spdlog && git checkout v1.11.0 &&\
+    cd .. && mkdir -p spdlog/build &&\
+    cmake -DCMAKE_BUILD_TYPE=Release -DSPDLOG_FMT_EXTERNAL=ON -DSPDLOG_FMT_EXTERNAL_HO=OFF -DSPDLOG_BUILD_TESTS=OFF -DSPDLOG_BUILD_EXAMPLE=OFF -S spdlog -B spdlog/build &&\
+    cmake --build spdlog/build --parallel ${NUM_MAKE_CORES} &&\
+    cmake --install spdlog/build &&\
+    rm -rf spdlog
 
 ## Configure system-wide git user 
 ARG GIT_LOGIN_EMAIL
@@ -128,13 +165,13 @@ RUN git config --system user.email "$GIT_LOGIN_EMAIL"
 RUN echo "umask u=rwx,g=rwx,o=rwx" >> /root/.profile
 
 # configure gpd eigen pretty printers 
-RUN touch /root/.gdbinit
-RUN echo "python" >> /root/.gdbinit
-RUN echo "import sys" >> /root/.gdbinit
-RUN echo "sys.path.insert(0, \"/root/.drake_gdb\")" >> /root/.gdbinit
-RUN echo "import drake_gdb" >> /root/.gdbinit
-RUN echo "drake_gdb.register_printers()" >> /root/.gdbinit
-RUN echo "end" >> /root/.gdbinit
+RUN touch /root/.gdbinit &&\
+    echo "python" >> /root/.gdbinit &&\
+    echo "import sys" >> /root/.gdbinit &&\
+    echo "sys.path.insert(0, \"/root/.drake_gdb\")" >> /root/.gdbinit &&\
+    echo "import drake_gdb" >> /root/.gdbinit &&\
+    echo "drake_gdb.register_printers()" >> /root/.gdbinit &&\
+    echo "end" >> /root/.gdbinit
 
 ## Bring up bash 
 CMD ["bash"]
@@ -168,10 +205,10 @@ RUN apt update --fix-missing \
 RUN gosu nobody true
 
 ## Clean up
-RUN apt autoclean
-RUN apt autoremove
-RUN apt clean
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt autoclean &&\
+    apt autoremove &&\
+    apt clean &&\
+    rm -rf /var/lib/apt/lists/*
 
 ## Config sshd
 RUN mkdir /var/run/sshd
@@ -224,6 +261,12 @@ LABEL maintainer="Bruce Wingo" \
       version="0.0.1"
 
 ARG STARTUP_FOLDER
+ARG DISPLAY
+ARG DISPLAY_WIDTH
+ARG DISPLAY_HEIGHT
+ARG DISPLAY_DEPTH
+ARG X11_WEBSOCKET_PORT
+
 
 RUN apt update \
     && apt install -y --no-install-recommends --allow-unauthenticated \
@@ -243,17 +286,17 @@ RUN apt update \
 
 # Setup visual environment variables
 ENV LC_ALL=C.UTF-8 \
-    DISPLAY=:0.0 \
-    DISPLAY_WIDTH=1024 \
-    DISPLAY_HEIGHT=768 \
-    DISPLAY_DEPTH=24 \
-    X11_WEBSOCKET_PORT=8080
+    DISPLAY=$DISPLAY\
+    DISPLAY_WIDTH=$DISPLAY_WIDTH \
+    DISPLAY_HEIGHT=$DISPLAY_HEIGHT \
+    DISPLAY_DEPTH=$DISPLAY_DEPTH \
+    X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT
 
-RUN echo "export DISPLAY=$DISPLAY" >> /etc/environment
-RUN echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /etc/environment
-RUN echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /etc/environment
-RUN echo "export DISPLAY_DEPTH=$DISPLAY_DEPTH" >> /etc/environment
-RUN echo "export X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT" >> /etc/environment
+RUN echo "export DISPLAY=$DISPLAY" >> /etc/environment &&\
+    echo "export DISPLAY_WIDTH=$DISPLAY_WIDTH" >> /etc/environment &&\
+    echo "export DISPLAY_HEIGHT=$DISPLAY_HEIGHT" >> /etc/environment &&\
+    echo "export DISPLAY_DEPTH=$DISPLAY_DEPTH" >> /etc/environment &&\
+    echo "export X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT" >> /etc/environment
 
 
 
@@ -281,10 +324,10 @@ LABEL maintainer="Bruce Wingo" \
 ARG REMOTE_USR=remote_usr
 ARG home=/home/$REMOTE_USR
 ARG ROS_DISTRO=noetic
-RUN echo "deb [trusted=yes] http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list
-RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add -
-RUN apt update --fix-missing
-RUN apt-get install -y --no-install-recommends \
+RUN echo "deb [trusted=yes] http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list &&\
+    curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add - &&\
+    apt update --fix-missing &&\
+    apt-get install -y --no-install-recommends \
 	ros-${ROS_DISTRO}-desktop-full
 # Install what you want (remember the '\')
 
@@ -297,10 +340,10 @@ RUN apt-get install -y --no-install-recommends \
 RUN rosdep init
 
 # clean up
-RUN apt autoclean
-RUN apt autoremove
-RUN apt clean
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt autoclean &&\
+    apt autoremove &&\
+    apt clean &&\
+    rm -rf /var/lib/apt/lists/*
 
 
 # USER $REMOTE_USR
@@ -308,15 +351,10 @@ ENV HOME $home
 RUN rosdep update
 ENV ROS_DISTRO $ROS_DISTRO
 
-# source ros setup in $REMOTE_USR .bashrc
-RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> $home/.bashrc
-# RUN mkdir -p ~/catkin_ws/src
-
-# source ros setup in root .bashrc
-RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc
-
-# source ros setup in root .profile
-RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.profile
+# source ros setup
+RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> $home/.bashrc &&\
+    echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc &&\
+    echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.profile
 
 ARG path=/opt/ros/$ROS_DISTRO/bin:$PATH
 ARG pkg_config_path=/opt/ros/$ROS_DISTRO/lib/pkgconfig:$PKG_CONFIG_PATH
@@ -358,18 +396,9 @@ LABEL maintainer="Bruce Wingo" \
       version="0.0.1"
 
 ## Install APT dependencies packages
-RUN apt update --fix-missing
-RUN apt upgrade -y
-# RUN apt-get install -y --no-install-recommends \
-#     gfortran \
-# 	liblapack-dev \
-#     liblapack64-dev \
-#     libopenblas-dev \
-#     swig \
-#     patch \
-#     libmetis-dev
-
-RUN apt-get install -y --no-install-recommends \
+RUN apt update --fix-missing &&\
+    apt upgrade -y &&\
+    apt-get install -y --no-install-recommends \
     gfortran \
     libblas3 \
     libblas-dev \
@@ -515,9 +544,9 @@ ARG home=/home/$REMOTE_USR
 ## Install catkin-tools and pybind11-catkin
 RUN sh \
     -c 'echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -sc` main" \
-        > /etc/apt/sources.list.d/ros-latest.list'
-RUN wget http://packages.ros.org/ros.key -O - | apt-key add -
-RUN apt-get update \
+        > /etc/apt/sources.list.d/ros-latest.list' &&\
+    wget http://packages.ros.org/ros.key -O - | apt-key add - &&\
+    apt-get update \
   && apt-get install -y --no-install-recommends \
      python3-catkin-tools \
      ros-$ROS_DISTRO-pybind11-catkin
@@ -544,12 +573,13 @@ RUN apt update --fix-missing \
 
 ## Install eigenpy from source 
 RUN cd /root &&\
-    git clone --recursive https://github.com/bwingo47/eigenpy.git
-    # git clone --recursive https://github.com/stack-of-tasks/eigenpy.git
-
-RUN cd /root/eigenpy &&\
+    # git clone --recursive https://github.com/bwingo47/eigenpy.git
+    git clone --recursive https://github.com/stack-of-tasks/eigenpy.git &&\
+    cd /root/eigenpy &&\
     # git checkout f53d37e0f732361f338769b730a129e2da9b6a46 &&\
-    git checkout master &&\
+    # git checkout master &&\
+    git checkout v2.7.11 &&\
+    git submodule update --init --recursive &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
@@ -570,12 +600,13 @@ RUN cd /root/eigenpy &&\
 
 ## Install hpp-fcl from source
 RUN cd /root &&\
-    git clone --recursive https://github.com/bwingo47/hpp-fcl.git
-    # git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git 
-
-RUN cd /root/hpp-fcl &&\
+    # git clone --recursive https://github.com/bwingo47/hpp-fcl.git
+    git clone --recursive https://github.com/humanoid-path-planner/hpp-fcl.git &&\
+    cd /root/hpp-fcl &&\
     # git checkout c8373f933ec0fe9fbded6f8d1235f6fc08845ada &&\
-    git checkout devel &&\
+    # git checkout devel &&\
+    git checkout v2.2.0 &&\
+    git submodule update --init --recursive &&\
     mkdir build &&\
     cd build &&\
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local &&\
@@ -585,15 +616,15 @@ RUN cd /root/hpp-fcl &&\
 
 ## Install pinocchio from source
 RUN cd /root &&\ 
-    git clone --recursive https://github.com/bwingo47/pinocchio.git
-    # git clone --recursive https://github.com/stack-of-tasks/pinocchio
-
-
-# must using turn on BUILD_WITH_COLLISION_SUPPORT option during cmake .. 
-# otherwise ocs2_pinocchio (specifically ocs2_self_collision) won't build
-RUN cd /root/pinocchio &&\
+    # git clone --recursive https://github.com/bwingo47/pinocchio.git
+    git clone --recursive https://github.com/stack-of-tasks/pinocchio &&\
+    # must using turn on BUILD_WITH_COLLISION_SUPPORT option during cmake .. 
+    # otherwise ocs2_pinocchio (specifically ocs2_self_collision) won't build
+    cd /root/pinocchio &&\
     # git checkout 5c93f4e043886ec43659a10a79701263a1e8fa18 &&\
-    git checkout master &&\
+    # git checkout master &&\
+    git checkout v2.6.17 &&\
+    git submodule update --init --recursive &&\
     mkdir build &&\
     cd build &&\
     cmake .. -D CMAKE_BUILD_TYPE=Release \
@@ -626,7 +657,7 @@ ENTRYPOINT ["/root/startup/entrypoint.sh"]
 
 
 #### REMOTE with ROS and OCS2 and full dependencies ####
-FROM remote_ros_gepetto AS remote_ros_ocs2
+FROM remote_ros_gepetto AS dev_digit
 LABEL maintainer="Bruce Wingo" \
       description="Upgrades the remote ROS Gepetto environment to have full OCS2" \
       version="0.0.1"
@@ -642,22 +673,17 @@ RUN apt update --fix-missing \
     gnome-terminal
 
 ## Make and initialize catkin_ws
-RUN mkdir -p /root/catkin_ws/src
-
-RUN cd /root/catkin_ws &&\
+RUN mkdir -p /root/catkin_ws/src &&\
+    cd /root/catkin_ws &&\
     catkin init &&\
     catkin config --extend /opt/ros/$ROS_DISTRO &&\
     catkin config -DCMAKE_BUILD_TYPE=RelWithDebInfo &&\
     catkin build
 
 # source catkin_ws setup in $REMOTE_USR .bashrc
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> $home/.bashrc
-
-# source catkin_ws setup in root .bashrc
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.bashrc
-
-# source catkin_ws setup in root .profile
-RUN echo "source /root/catkin_ws/devel/setup.bash" >> /root/.profile
+RUN echo "source /root/catkin_ws/devel/setup.bash" >> $home/.bashrc &&\
+    echo "source /root/catkin_ws/devel/setup.bash" >> /root/.bashrc &&\
+    echo "source /root/catkin_ws/devel/setup.bash" >> /root/.profile
 
 # update catkin_ws path variables
 ARG pkg_config_path=/root/catkin_ws/devel/lib/pkgconfig:$PKG_CONFIG_PATH
@@ -716,44 +742,36 @@ ENV CMAKE_PREFIX_PATH=$cmake_prefix_path
 ## Add all modified path to .profile so CLion can access these path variables
 #  This only works on session restart, need to find better solution
 #  Not sure if this actually works as CLion still can't see the ENV variables
-RUN echo "PATH=$PATH" >> /root/.profile
-RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/.profile
-RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/.profile
-RUN echo "PYTHONPATH=$PYTHONPATH" >> /root/.profile
-RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/.profile
+RUN echo "PATH=$PATH" >> /root/.profile &&\
+    echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/.profile &&\
+    echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/.profile &&\
+    echo "PYTHONPATH=$PYTHONPATH" >> /root/.profile &&\
+    echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/.profile
 
-RUN touch /root/clion_env_vars.txt
-RUN echo "PATH=$PATH" >> /root/clion_env_vars.txt
-RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/clion_env_vars.txt
-RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/clion_env_vars.txt
-RUN echo "PYTHONPATH=$PYTHONPATH" >> /root/clion_env_vars.txt
-RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/clion_env_vars.txt
+RUN touch /root/clion_env_vars.txt &&\
+    echo "PATH=$PATH" >> /root/clion_env_vars.txt &&\
+    echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /root/clion_env_vars.txt &&\
+    echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /root/clion_env_vars.txt &&\
+    echo "PYTHONPATH=$PYTHONPATH" >> /root/clion_env_vars.txt &&\
+    echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /root/clion_env_vars.txt
 
 # Add path variables to /etc/environment for all shells 
-RUN echo "PATH=$PATH" >> /etc/environment
-RUN echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /etc/environment
-RUN echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /etc/environment
-RUN echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment
-RUN echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
+RUN echo "PATH=$PATH" >> /etc/environment &&\
+    echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> /etc/environment &&\
+    echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> /etc/environment &&\
+    echo "PYTHONPATH=$PYTHONPATH" >> /etc/environment &&\
+    echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
 
 # source $DOCKER_WS setup in $REMOTE_USR .bashrc
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> $home/.bashrc
-
-# source $DOCKER_WS setup in root .bashrc
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc
-
-# source $DOCKER_WS setup in root .profile
-RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
+RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> $home/.bashrc &&\
+    echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc &&\
+    echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
 
 
 # source $DOCKER_WS setup in $REMOTE_USR .bashrc
-RUN echo "source /root/$DOCKER_WS_1/devel/setup.bash" >> $home/.bashrc
-
-# source $DOCKER_WS setup in root .bashrc
-RUN echo "source /root/$DOCKER_WS_1/devel/setup.bash" >> /root/.bashrc
-
-# source $DOCKER_WS setup in root .profile
-RUN echo "source /root/$DOCKER_WS_1/devel/setup.bash" >> /root/.profile
+RUN echo "source /root/$DOCKER_WS_1/devel/setup.bash" >> $home/.bashrc &&\
+    echo "source /root/$DOCKER_WS_1/devel/setup.bash" >> /root/.bashrc &&\
+    echo "source /root/$DOCKER_WS_1/devel/setup.bash" >> /root/.profile
 
 
 

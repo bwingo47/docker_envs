@@ -9,9 +9,9 @@ IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
 DOCKERFILE_NAME=mac_vnc_pinocchio.dockerfile
 # Specify build stage name for multi-target dockerfile
-DOCKERFILE_BUILD_STAGE=remote_pinocchio_dev
+DOCKERFILE_BUILD_STAGE=pinocchio3_dev
 # Specify docker workspace folder name to be mounted 
-DOCKER_WS=docker_pinocchio_ws
+DOCKER_WS=docker_pinocchio3_ws
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
 # Specify the number of CPU cores to run cmake
@@ -26,6 +26,12 @@ STARTUP_FOLDER=startup
 GDB_SSH_PORT=7780
 # X11 websocket port
 X11_WEBSOCKET_PORT=8084
+# Display
+DISPLAY=:0.0
+# Display width, height, depth
+DISPLAY_WIDTH=1335
+DISPLAY_HEIGHT=735
+DISPLAY_DEPTH=24
 
 # If the container is running stop it
 if [ "$( docker container inspect -f '{{.State.Running}}' $CONTAINER_NAME )" == "true" ]; then
@@ -46,6 +52,11 @@ docker build -f $DOCKERFILE_NAME \
   --build-arg NUM_MAKE_CORES=$NUM_MAKE_CORES \
   --build-arg DOCKER_WS=$DOCKER_WS \
   --build-arg STARTUP_FOLDER=$STARTUP_FOLDER \
+  --build-arg DISPLAY=$DISPLAY \
+  --build-arg DISPLAY_WIDTH=$DISPLAY_WIDTH \
+  --build-arg DISPLAY_DEPTH=$DISPLAY_DEPTH \
+  --build-arg DISPLAY_HEIGHT=$DISPLAY_HEIGHT \
+  --build-arg X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT \
   --target $DOCKERFILE_BUILD_STAGE \
   -t $IMAGE_NAME . || { echo "Build docker failed"; exit 1; }
 
@@ -69,10 +80,10 @@ docker run \
       --ipc=host \
       -e GDB_SSH_PORT=$GDB_SSH_PORT \
       -e X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT \
-      -e DISPLAY=:0.0 \
-      -e DISPLAY_WIDTH=1435 \
-      -e DISPLAY_HEIGHT=835 \
-      -e DISPLAY_DEPTH=24 \
+      -e DISPLAY=$DISPLAY \
+      -e DISPLAY_WIDTH=$DISPLAY_WIDTH \
+      -e DISPLAY_HEIGHT=$DISPLAY_HEIGHT \
+      -e DISPLAY_DEPTH=$DISPLAY_DEPTH \
       -p $GDB_SSH_PORT:$GDB_SSH_PORT \
       -p $X11_WEBSOCKET_PORT:$X11_WEBSOCKET_PORT \
       -it \

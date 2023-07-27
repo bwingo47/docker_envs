@@ -3,19 +3,15 @@
 # Specify docke user name
 DOCKER_USR=bwingo47
 # Specify name of container
-CONTAINER_NAME=mac-vnc-container
+CONTAINER_NAME=mac-pinocchio-container
 # Specify name of image (repository)
 IMAGE_NAME=$DOCKER_USR/$CONTAINER_NAME
 # Specify name of docker file to build and run
-DOCKERFILE_NAME=mac_vnc.dockerfile
+DOCKERFILE_NAME=mac_vnc_pinocchio.dockerfile
 # Specify build stage name for multi-target dockerfile
-DOCKERFILE_BUILD_STAGE=dev_digit
+DOCKERFILE_BUILD_STAGE=pinocchio3_dev
 # Specify docker workspace folder name to be mounted 
-DOCKER_WS=docker_arm64_ws
-# Specify docker workspace folder name to be mounted 
-DOCKER_WS_1=docker_legged_mpc_ws
-# Specify additional docker workspace folder name to be mounted 
-# DOCKER_WS_2=docker_digit_util_ws
+DOCKER_WS=docker_pinocchio3_ws
 # Specify github login name
 GIT_LOGIN_EMAIL=wingobruce47@gmail.com
 # Specify the number of CPU cores to run cmake
@@ -27,16 +23,15 @@ LOCALHOSTNAME=localhost
 # Startup folder name 
 STARTUP_FOLDER=startup
 # GDB port
-GDB_SSH_PORT=7777
+GDB_SSH_PORT=7780
 # X11 websocket port
-X11_WEBSOCKET_PORT=8083
+X11_WEBSOCKET_PORT=8084
 # Display
 DISPLAY=:0.0
 # Display width, height, depth
 DISPLAY_WIDTH=1335
 DISPLAY_HEIGHT=735
 DISPLAY_DEPTH=24
-
 
 # If the container is running stop it
 if [ "$( docker container inspect -f '{{.State.Running}}' $CONTAINER_NAME )" == "true" ]; then
@@ -46,25 +41,24 @@ fi
 
 CUSTOM_USER=remote_usr
 
-echo "Building docker image"
-docker build -f $DOCKERFILE_NAME \
-  --build-arg NVIDIA_DRIVER_VERSION="$NVIDIA_DRIVER_VERSION" \
-  --build-arg SSH_PRV_KEY="$(cat $HOME/.ssh/id_ed25519)" \
-  --build-arg SSH_PUB_KEY="$(cat $HOME/.ssh/id_ed25519.pub)" \
-  --build-arg GDB_SSH_PORT=$GDB_SSH_PORT \
-  --build-arg CUSTOM_USER=$CUSTOM_USER \
-  --build-arg GIT_LOGIN_EMAIL=$GIT_LOGIN_EMAIL \
-  --build-arg NUM_MAKE_CORES=$NUM_MAKE_CORES \
-  --build-arg DOCKER_WS=$DOCKER_WS \
-  --build-arg DOCKER_WS_1=$DOCKER_WS_1 \
-  --build-arg STARTUP_FOLDER=$STARTUP_FOLDER \
-  --build-arg DISPLAY=$DISPLAY \
-  --build-arg DISPLAY_WIDTH=$DISPLAY_WIDTH \
-  --build-arg DISPLAY_DEPTH=$DISPLAY_DEPTH \
-  --build-arg DISPLAY_HEIGHT=$DISPLAY_HEIGHT \
-  --build-arg X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT \
-  --target $DOCKERFILE_BUILD_STAGE \
-  -t $IMAGE_NAME . || { echo "Build docker failed"; exit 1; }
+# echo "Building docker image"
+# docker build -f $DOCKERFILE_NAME \
+#   --build-arg NVIDIA_DRIVER_VERSION="$NVIDIA_DRIVER_VERSION" \
+#   --build-arg SSH_PRV_KEY="$(cat $HOME/.ssh/id_ed25519)" \
+#   --build-arg SSH_PUB_KEY="$(cat $HOME/.ssh/id_ed25519.pub)" \
+#   --build-arg GDB_SSH_PORT=$GDB_SSH_PORT \
+#   --build-arg CUSTOM_USER=$CUSTOM_USER \
+#   --build-arg GIT_LOGIN_EMAIL=$GIT_LOGIN_EMAIL \
+#   --build-arg NUM_MAKE_CORES=$NUM_MAKE_CORES \
+#   --build-arg DOCKER_WS=$DOCKER_WS \
+#   --build-arg STARTUP_FOLDER=$STARTUP_FOLDER \
+#   --build-arg DISPLAY=$DISPLAY \
+#   --build-arg DISPLAY_WIDTH=$DISPLAY_WIDTH \
+#   --build-arg DISPLAY_DEPTH=$DISPLAY_DEPTH \
+#   --build-arg DISPLAY_HEIGHT=$DISPLAY_HEIGHT \
+#   --build-arg X11_WEBSOCKET_PORT=$X11_WEBSOCKET_PORT \
+#   --target $DOCKERFILE_BUILD_STAGE \
+#   -t $IMAGE_NAME . || { echo "Build docker failed"; exit 1; }
 
 
 echo "Running docker"
@@ -96,7 +90,6 @@ docker run \
       --rm \
       -v $PWD/$STARTUP_FOLDER:/root/$STARTUP_FOLDER \
       -v $HOME/$DOCKER_WS:/root/$DOCKER_WS \
-      -v $HOME/$DOCKER_WS_1:/root/$DOCKER_WS_1 \
       -v $HOME/.ssh:/root/.ssh \
       -v $HOME/.drake_gdb:/root/.drake_gdb \
       --privileged \
@@ -111,4 +104,3 @@ fi
 /bin/bash $PWD/run_ssh.sh -p $GDB_SSH_PORT
 
 # open http://localhost:8080/vnc.html
-

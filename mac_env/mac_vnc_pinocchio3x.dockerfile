@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ARG BASE_IMAGE_NAME=ubuntu:20.04
 FROM $BASE_IMAGE_NAME AS base
 LABEL maintainer="Bruce Wingo" \
@@ -16,14 +17,18 @@ RUN apt update --fix-missing \
     apt-utils \
   && apt-get install -y --no-install-recommends \
     keyboard-configuration \
-    tzdata
+    tzdata  
 
 ## Install APT packages
 RUN apt update --fix-missing
+RUN apt upgrade -y &&\
+    apt-get update
+RUN apt-get install -y --no-install-recommends \
+    build-essential 
+
+RUN apt update --fix-missing
 RUN apt upgrade -y
 RUN apt-get install -y --no-install-recommends \
-    build-essential \
-	cmake \
     g++-9 \
     gcc-9 \
     g++-10 \
@@ -32,36 +37,61 @@ RUN apt-get install -y --no-install-recommends \
     clang-tidy-10 \
     clang-format-12 \
     clang-tidy-12 
+    
 
 RUN apt update --fix-missing
 RUN apt upgrade -y
 RUN apt-get install -y --no-install-recommends \
 	curl \
-	doxygen \
-    doxygen-latex \
+    tmux \
+    wget \
 	libeigen3-dev \
 	gdb \
     gdbserver \
-	git \
-    git-lfs \
     gnupg \
+	doxygen \
     lcov \
-    libboost-all-dev \
-    libopencv-dev \
-    libtbb-dev \
+    libtbb-dev 
+
+## Build latest CMake from source 
+RUN apt-get update &&\ 
+    apt-get install -y \ 
+    ca-certificates \
+    libssl-dev
+
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.22.1/cmake-3.22.1.tar.gz &&\
+    tar -xzvf cmake-3.22.1.tar.gz
+
+RUN cd cmake-3.22.1 &&\
+    ./bootstrap &&\
+    make &&\
+    make install   
+
+# Install what you want (remember the ' \')
+
+RUN apt update --fix-missing
+RUN apt upgrade -y
+RUN apt-get install -y --no-install-recommends \
     lsb-core \
+    libopencv-dev \
+    doxygen-latex \
+    git \
+    git-lfs \
+    software-properties-common \
+    libboost-all-dev 
+
+RUN apt update --fix-missing
+RUN apt upgrade -y
+RUN apt-get install -y --no-install-recommends \
 	python3 \
     python3-tk \
     python3-apt \
     python3-distutils \
     python3-opencv \
     python3-pip \
-    software-properties-common \
-	tmux \
-    wget \
 	libglu1-mesa-dev \
     xorg-dev
-# Install what you want (remember the ' \')
+
 
 ## Setup alternatives python 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 3
@@ -673,8 +703,6 @@ RUN echo "PATH=$PATH" >> /etc/environment &&\
     echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> /etc/environment
 
 
-
-
 USER root
 # ENTRYPOINT ["/root/start.sh"]
 ENTRYPOINT ["/root/startup/entrypoint.sh"]
@@ -695,18 +723,37 @@ ARG home=/home/$REMOTE_USR
 ## Install gnome-terminal, ocs2 roslaunch files use this to input commands 
 RUN apt update --fix-missing \
   && apt-get install -y --no-install-recommends \
-    gnome-terminal
+    gnome-terminal 
+
+RUN mkdir -p -m 0600 /root/.ssh &&\
+    touch /root/.ssh/known_hosts &&\
+    ssh-keyscan gitlab.inria.fr >> /root/.ssh/known_hosts
+
+
+# # Install pinocchio from source
+# RUN --mount=type=ssh git clone git@gitlab.inria.fr:jucarpen/pinocchio.git /root/pinocchio &&\
+#     # must using turn on BUILD_WITH_COLLISION_SUPPORT option during cmake .. 
+#     # otherwise ocs2_pinocchio (specifically ocs2_self_collision) won't build
+#     cd /root/pinocchio &&\
+#     git checkout pinocchio-3x &&\
+#     git submodule update --init --recursive &&\
+#     mkdir build &&\
+#     cd build &&\
+#     cmake .. -D CMAKE_BUILD_TYPE=Release \
+#              -D CMAKE_INSTALL_PREFIX=/usr/local \
+#              -D BUILD_WITH_URDF_SUPPORT=ON \
+#              -D BUILD_WITH_COLLISION_SUPPORT=ON &&\
+#     make &&\
+#     make install
 
 # Install pinocchio from source
-RUN cd /root &&\ 
-    git clone https://github.com/stack-of-tasks/pinocchio.git &&\
+RUN --mount=type=ssh git clone git@gitlab.inria.fr:jucarpen/pinocchio.git /root/pinocchio &&\
     # must using turn on BUILD_WITH_COLLISION_SUPPORT option during cmake .. 
     # otherwise ocs2_pinocchio (specifically ocs2_self_collision) won't build
     cd /root/pinocchio &&\
-    git checkout pinocchio3-preview &&\
+    git checkout 8456e3eb64633b83e931a88aedbc14e6fcd359f9 &&\
     git submodule update --init --recursive &&\
-    mkdir build &&\
-    cd build &&\
+    mkdir build && cd build &&\
     cmake .. -D CMAKE_BUILD_TYPE=Release \
              -D CMAKE_INSTALL_PREFIX=/usr/local \
              -D BUILD_WITH_URDF_SUPPORT=ON \
@@ -714,7 +761,7 @@ RUN cd /root &&\
     make &&\
     make install
 
-
+RUN rm -r /root/.ssh
 
 ## Write Pinocchio install script to container
 # ARG DOCKER_WS
@@ -776,6 +823,11 @@ RUN echo "source /root/$DOCKER_WS/devel/setup.bash" >> $home/.bashrc &&\
     echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.bashrc &&\
     echo "source /root/$DOCKER_WS/devel/setup.bash" >> /root/.profile
 
+
+# Install ccmake, better move this to base image
+RUN apt update --fix-missing \
+  && apt-get install -y --no-install-recommends \
+    cmake-curses-gui 
 
 
 
